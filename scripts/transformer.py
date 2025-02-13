@@ -1,14 +1,15 @@
 # transformer.py
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import List
 
-def transform_xml(xml_content: str, new_sample_path: str = "/Users/Shared/Music/Soundbanks/Native Instruments/Expansions/Amplified Funk Library/Samples/Drums/Clap/Clap BluOut 1.wav") -> str:
+def transform_xml(xml_content: str, sample_paths: List[str]) -> str:
     """
     Transform the XML content by replacing sample paths in all DrumCell devices
     
     Args:
         xml_content (str): Original XML content
-        new_sample_path (str): Full path to the new sample file
+        sample_paths (List[str]): List of 32 sample paths to use (can contain None)
         
     Returns:
         str: Transformed XML content
@@ -23,7 +24,18 @@ def transform_xml(xml_content: str, new_sample_path: str = "/Users/Shared/Music/
         # Keep track of how many samples we've replaced
         replaced_count = 0
         
-        for pad in drum_pads:
+        # Sort drum pads by receiving note to ensure correct order
+        drum_pads.sort(key=lambda pad: int(pad.find(".//ZoneSettings/ReceivingNote").get("Value")))
+        
+        # Process each pad with its corresponding sample
+        for pad_index, pad in enumerate(drum_pads):
+            if pad_index >= len(sample_paths):
+                break
+                
+            # Skip if no sample provided for this pad
+            if not sample_paths[pad_index]:
+                continue
+                
             # Find DrumCell devices within this pad
             drum_cells = pad.findall(".//DrumCell")
             
@@ -35,15 +47,13 @@ def transform_xml(xml_content: str, new_sample_path: str = "/Users/Shared/Music/
                     # Update the absolute path
                     path_elem = file_ref.find("Path")
                     if path_elem is not None:
-                        # For multiple pads, we might want to use different samples
-                        # For now, using the same sample but you could modify this
-                        path_elem.set('Value', new_sample_path)
+                        path_elem.set('Value', sample_paths[pad_index])
                         
                         # Update the relative path
                         rel_path_elem = file_ref.find("RelativePath")
                         if rel_path_elem is not None:
                             # Split the path and keep the last three components
-                            path_parts = new_sample_path.split('/')
+                            path_parts = sample_paths[pad_index].split('/')
                             new_rel_path = "../../" + '/'.join(path_parts[-3:])
                             rel_path_elem.set('Value', new_rel_path)
                             
