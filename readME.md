@@ -2,17 +2,26 @@
 ## Technical Documentation
 
 ## Overview
-The Ableton Device File Processor is a Python-based system for manipulating Ableton Live device group (.adg) files. It specializes in creating multiple drum racks from sample libraries, particularly Native Instruments Expansions, while preserving device settings.
+The Ableton Device File Processor is a Python-based system for creating Ableton Live drum racks (.adg) from Native Instruments Expansion libraries. It offers two main functionalities:
+1. Creating full drum racks with organized drum categories
+2. Creating percussion-only racks from percussion samples
 
 ## Features
+
+### Standard Drum Racks
 - Creates organized drum racks from sample libraries
 - Maintains consistent pad layout across racks:
   - First 8 pads: Kick drums
-  - Next 8 pads: sSnares and claps
-  - Next 8 pads: Hi-hats and shaker
+  - Next 8 pads: Snares and claps
+  - Next 8 pads: Hi-hats and shakers
   - Last 8 pads: Auxiliary percussion
-- Processes multiple libraries in batch
-- Preserves all device settings from template rack
+- Names racks based on library name and first kick sample
+
+### Percussion-Only Racks
+- Creates 32-pad racks filled with percussion samples
+- Organizes samples alphabetically
+- Names racks based on library name (e.g., "Anima Ascent Percussion 01")
+- Creates multiple racks if library contains more than 32 samples
 
 ## Installation
 
@@ -26,32 +35,38 @@ cd ableton-device-processor
 
 ## Usage
 
-### Processing a Single Library
+### Standard Drum Racks
 
 ```bash
+# Process a single library
 python3 scripts/main.py input_rack.adg "/path/to/library/folder"
-```
 
-Arguments:
-- `input_rack.adg`: Template drum rack file
-- `library_folder`: Path to sample library (e.g., "Amplified Funk Library")
-
-Optional:
-- `--output-folder`: Custom output location (default: creates named folder next to script)
-
-### Processing Multiple Libraries
-
-```bash
+# Process multiple libraries
 python3 scripts/meta_main.py input_rack.adg "/path/to/expansions/folder"
 ```
 
+### Percussion-Only Racks
+
+```bash
+python3 scripts/meta_main_percussion.py input_rack.adg "/path/to/expansions/folder"
+```
+
 Arguments:
 - `input_rack.adg`: Template drum rack file
-- `expansions_folder`: Path to folder containing multiple libraries (e.g., Native Instruments Expansions folder)
+- `expansions_folder`: Path to Native Instruments Expansions folder
 
-Output:
-- Creates an "Output" folder containing subfolders for each processed library
-- Each library folder contains numbered drum racks (e.g., "Amplified Funk 01 Stash.adg")
+Output Structure:
+```
+Output/
+├── Amplified Funk Library/
+│   ├── Amplified Funk Percussion 01.adg  # 32 percussion samples
+│   ├── Amplified Funk Percussion 02.adg  # Next 32 samples
+│   └── ...
+├── Battery Factory Library/
+│   ├── Battery Factory Percussion 01.adg
+│   └── ...
+└── ...
+```
 
 ## System Architecture
 
@@ -59,49 +74,39 @@ Output:
 ```
 ableton-device-processor/
 ├── scripts/
-│   ├── meta_main.py    # Multi-library processor
-│   ├── main.py         # Single library processor
-│   ├── decoder.py      # ADG file decoder
-│   ├── transformer.py  # XML content transformer
-│   └── encoder.py      # ADG file encoder
+│   ├── meta_main.py           # Multi-library processor for drum racks
+│   ├── meta_main_percussion.py # Multi-library processor for percussion
+│   ├── main.py                # Single library processor for drum racks
+│   ├── main_percussion.py     # Single library processor for percussion
+│   ├── decoder.py             # ADG file decoder
+│   ├── transformer.py         # XML content transformer
+│   └── encoder.py             # ADG file encoder
 ```
 
 ### Process Flow
 1. Scan library folders for samples
-2. Organize samples into categories
-3. Create multiple drum racks, each with:
-   - 8 kick samples
-   - 8 snare/clap samples
-   - 8 hi-hat/shaker samples
-   - 8 auxiliary percussion samples
-
+2. Organize samples based on mode:
+   - Standard: Group by drum type (kicks, snares, etc.)
+   - Percussion: Alphabetical order
+3. Create drum racks with organized samples
 4. Save racks in organized output structure
 
 ## Sample Organization
 
-### Categories
+### Standard Mode Categories
 - **Kicks**: All kick drum samples
 - **Snares/Claps**: All snare and clap samples
 - **Hi-hats/Shakers**: All hi-hat and shaker samples
 - **Auxiliary Percussion**: Any percussion except kicks, snares, claps, hi-hats, shakers, and cymbals
 
+### Percussion Mode
+- Uses all samples from the library's Percussion folder
+- Organizes alphabetically across 32-pad racks
+- Creates multiple racks if more than 32 samples exist
 
 ### Sorting
-- Samples within each category are sorted alphabetically by their descriptive names
-- Descriptive names are extracted after the category word (e.g., "Stash" from "Kick Stash 1")
-
-## Output Structure
-```
-Output/
-├── Amplified Funk Library/
-│   ├── Amplified Funk 01 Stash.adg
-│   ├── Amplified Funk 02 Punch.adg
-│   └── ...
-├── Battery Factory Library/
-│   ├── Battery Factory 01 Deep.adg
-│   └── ...
-└── ...
-```
+- Standard mode: Samples within each category are sorted by descriptive names
+- Percussion mode: All samples sorted alphabetically
 
 ## Error Handling
 - Validates input files and folders
