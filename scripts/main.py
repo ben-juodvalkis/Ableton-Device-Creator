@@ -150,51 +150,67 @@ def organize_drum_samples(donor_path: Path, batch_index: int) -> tuple[List[str]
 def main():
     parser = argparse.ArgumentParser(description='Process Ableton device group files')
     parser.add_argument('input_file', type=str, help='Input .adg file path')
-    parser.add_argument('output_folder', type=str, help='Output folder for .adg files')
     parser.add_argument('donor_folder', type=str, help='Path to donor samples folder')
+    parser.add_argument('--output-folder', type=str, help='Optional: Output folder for .adg files', default=None)
     
-    args = parser.parse_args()
-    input_path = Path(args.input_file)
-    output_folder = Path(args.output_folder)
-    donor_path = Path(args.donor_folder)
-    
-    # Create output folder if it doesn't exist
-    output_folder.mkdir(parents=True, exist_ok=True)
-    
-    batch_index = 0
-    while True:
-        try:
-            # Get organized samples for this batch
-            samples, rack_name, has_more = organize_drum_samples(donor_path, batch_index)
-            
-            if not samples:
-                break
+    try:
+        args = parser.parse_args()
+        input_path = Path(args.input_file)
+        donor_path = Path(args.donor_folder)
+        
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input file not found: {input_path}")
+        if not donor_path.exists():
+            raise FileNotFoundError(f"Donor folder not found: {donor_path}")
+        
+        # If no output folder specified, create one based on the library name
+        if args.output_folder:
+            output_folder = Path(args.output_folder)
+        else:
+            library_name = get_library_name(donor_path)
+            # Create output folder next to the input file
+            output_folder = input_path.parent / f"{library_name} Drum Racks"
+        
+        # Create output folder if it doesn't exist
+        output_folder.mkdir(parents=True, exist_ok=True)
+        print(f"Creating drum racks in: {output_folder}")
+        
+        batch_index = 0
+        while True:
+            try:
+                # Get organized samples for this batch
+                samples, rack_name, has_more = organize_drum_samples(donor_path, batch_index)
                 
-            # Create output path for this rack - use safe filename
-            safe_name = "".join(c for c in rack_name if c.isalnum() or c in " -_")
-            output_path = output_folder / f"{safe_name}.adg"
-            
-            # Decode the ADG file to XML
-            xml_content = decode_adg(input_path)
-            
-            # Transform the XML with our organized samples
-            transformed_xml = transform_xml(xml_content, samples)
-            
-            # Encode back to ADG
-            encode_adg(transformed_xml, output_path)
-            
-            print(f"Successfully created {output_path}")
-            
-            if not has_more:
-                break
+                if not samples:
+                    break
+                    
+                # Create output path for this rack - use safe filename
+                safe_name = "".join(c for c in rack_name if c.isalnum() or c in " -_")
+                output_path = output_folder / f"{safe_name}.adg"
                 
-            batch_index += 1
-            
-        except Exception as e:
-            print(f"Error processing batch {batch_index + 1}: {e}")
-            break
-    
-    print(f"\nCreated {batch_index + 1} drum racks in {output_folder}")
+                # Decode the ADG file to XML
+                xml_content = decode_adg(input_path)
+                
+                # Transform the XML with our organized samples
+                transformed_xml = transform_xml(xml_content, samples)
+                
+                # Encode back to ADG
+                encode_adg(transformed_xml, output_path)
+                
+                print(f"Successfully created {output_path}")
+                
+                if not has_more:
+                    break
+                    
+                batch_index += 1
+                
+            except Exception as e:
+                print(f"Error processing batch {batch_index + 1}: {e}")
+                break
+        
+        print(f"\nCreated {batch_index + 1} drum racks in {output_folder}")
+    except Exception as e:
+        print(f"Error processing arguments: {e}")
 
 if __name__ == "__main__":
     main()
