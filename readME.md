@@ -2,22 +2,23 @@
 ## Technical Documentation
 
 ## Overview
-The Ableton Device File Processor is a Python-based system for manipulating Ableton Live device group (.adg) files. It provides a modular framework for decoding, transforming, and re-encoding ADG files, allowing for programmatic modifications to Ableton Live devices.
+The Ableton Device File Processor is a Python-based system for manipulating Ableton Live device group (.adg) files. It specializes in modifying Drum Rack presets, particularly for updating sample paths across multiple drum pads while preserving all other settings.
 
 ## System Architecture
 
 ### Module Structure
 ```
 ableton-device-processor/
-├── main.py           # Main script orchestrating the process
-├── decoder.py        # ADG file decoder
-├── transformer.py    # XML content transformer
-└── encoder.py        # ADG file encoder
+├── scripts/
+│   ├── main.py           # Main script orchestrating the process
+│   ├── decoder.py        # ADG file decoder
+│   ├── transformer.py    # XML content transformer
+│   └── encoder.py        # ADG file encoder
 ```
 
 ### Process Flow
 1. Decode: ADG → XML
-2. Transform: Modify XML content
+2. Transform: Modify XML content (sample paths)
 3. Encode: XML → ADG
 
 ## Module Documentation
@@ -43,36 +44,47 @@ xml_content = decode_adg(Path("my_device.adg"))
 ```
 
 ### transformer.py
-The transformer module handles XML content modifications.
+The transformer module handles XML modifications, specifically focusing on updating sample paths in Drum Rack devices.
 
 #### Functions
+
 ```python
-transform_xml(xml_content: str) -> str
+transform_xml(xml_content: str, new_sample_path: str = "/path/to/default/sample.wav") -> str
 ```
-- **Purpose**: Transforms XML content according to specified rules
+- **Purpose**: Transforms XML content by replacing sample paths in all DrumCell devices
 - **Parameters**:
   - `xml_content`: String containing the XML to transform
+  - `new_sample_path`: Path to the new sample file (optional, has default)
 - **Returns**: String containing the transformed XML
-- **Raises**: Exception if transformation fails
+- **Behavior**: 
+  - Processes all drum pads in the rack
+  - Updates both absolute and relative sample paths
+  - Preserves all other device settings
+  - Reports number of samples replaced
 - **Example**:
 ```python
 from transformer import transform_xml
 
-transformed_xml = transform_xml(xml_content)
+transformed_xml = transform_xml(xml_content, "/path/to/new/sample.wav")
 ```
 
-#### Adding Custom Transformations
-To add custom transformations, modify the `transform_xml` function:
-
 ```python
-def transform_xml(xml_content: str) -> str:
-    root = ET.fromstring(xml_content)
-    
-    # Example: Change sample path
-    for sample_ref in root.findall(".//SampleRef/FileRef/Path"):
-        sample_ref.set('Value', '/new/path/to/sample.wav')
-    
-    return ET.tostring(root, encoding='unicode', xml_declaration=True)
+get_drum_cell_info(xml_content: str) -> list
+```
+- **Purpose**: Analyzes and reports information about all drum cells in the rack
+- **Parameters**:
+  - `xml_content`: String containing the XML to analyze
+- **Returns**: List of dictionaries containing info about each drum cell
+- **Information Retrieved**:
+  - MIDI note assignments
+  - Current sample paths
+- **Example**:
+```python
+from transformer import get_drum_cell_info
+
+cells_info = get_drum_cell_info(xml_content)
+for cell in cells_info:
+    print(f"MIDI Note: {cell['midi_note']}, Sample: {cell['sample_path']}")
 ```
 
 ### encoder.py
@@ -86,7 +98,6 @@ encode_adg(xml_content: str, output_path: Path) -> None
 - **Parameters**:
   - `xml_content`: String containing the XML to encode
   - `output_path`: Path object for the output ADG file
-- **Raises**: Exception if encoding fails
 - **Example**:
 ```python
 from pathlib import Path
@@ -95,90 +106,82 @@ from encoder import encode_adg
 encode_adg(transformed_xml, Path("output_device.adg"))
 ```
 
-### main.py
-The main script orchestrates the entire process.
+## Usage
 
-#### Usage
+### Basic Usage
 ```bash
-python main.py input_file.adg output_file.adg
+python3 scripts/main.py input_file.adg output_file.adg
 ```
 
-#### Command Line Arguments
+### Command Line Arguments
 - `input_file`: Path to the input ADG file
 - `output_file`: Path where the processed ADG file should be saved
 
-#### Example
+### Example Workflow
 ```bash
-python main.py "empty_drum_rack.adg" "modified_drum_rack.adg"
+# Process a drum rack, replacing all samples with the default sample
+python3 scripts/main.py my_drum_rack.adg modified_drum_rack.adg
 ```
-
-## Error Handling
-All modules include error handling with specific error messages:
-- File not found errors
-- XML parsing errors
-- Encoding/decoding errors
-- Transformation errors
-
-## Best Practices
-
-### Working with XML Content
-- Always validate XML structure before transforming
-- Use XML namespaces correctly
-- Preserve XML declaration and encoding
-- Maintain proper indentation
-
-### File Handling
-- Use Path objects for file paths
-- Close file handles properly
-- Handle encoding/decoding exceptions
-- Verify file existence before processing
 
 ## Common Use Cases
 
-### 1. Modifying Sample Paths
+### 1. Replacing All Samples in a Drum Rack
 ```python
+# In transformer.py
 def transform_xml(xml_content: str) -> str:
     root = ET.fromstring(xml_content)
-    for path in root.findall(".//FileRef/Path"):
-        current_path = path.get('Value')
-        new_path = current_path.replace('/old/path', '/new/path')
-        path.set('Value', new_path)
+    for file_ref in root.findall(".//UserSample/Value/SampleRef/FileRef"):
+        path_elem = file_ref.find("Path")
+        if path_elem is not None:
+            path_elem.set('Value', "/path/to/new/sample.wav")
     return ET.tostring(root, encoding='unicode', xml_declaration=True)
 ```
 
-### 2. Changing Device Parameters
+### 2. Analyzing Drum Rack Structure
 ```python
-def transform_xml(xml_content: str) -> str:
-    root = ET.fromstring(xml_content)
-    for param in root.findall(".//Manual"):
-        if param.get('Value'):
-            param.set('Value', "0.5")  # Set new value
-    return ET.tostring(root, encoding='unicode', xml_declaration=True)
+# Get information about all drum cells
+cells_info = get_drum_cell_info(xml_content)
+for cell in cells_info:
+    print(f"Found drum cell: MIDI Note {cell['midi_note']}")
 ```
 
-## Troubleshooting
+## Error Handling
 
 ### Common Issues and Solutions
 
-1. **Invalid ADG File**
-   - Verify file is a valid Ableton device group file
-   - Check file permissions
-   - Ensure file isn't corrupted
+1. **File Access Issues**
+   - Verify file permissions
+   - Check file paths are correct
+   - Ensure the ADG file is not currently in use by Ableton Live
 
 2. **XML Parsing Errors**
-   - Verify XML structure is valid
-   - Check for proper XML declaration
-   - Ensure correct encoding (UTF-8)
+   - Verify ADG file is valid
+   - Check for XML structure integrity
+   - Ensure proper encoding (UTF-8)
 
-3. **Transformation Errors**
-   - Verify XPath queries
-   - Check XML namespace usage
-   - Validate element/attribute modifications
+3. **Sample Path Issues**
+   - Verify new sample paths exist
+   - Check for proper path formatting
+   - Ensure consistent path separators
 
 ### Debug Tips
-- Use print statements to inspect XML content
-- Validate XML structure after transformations
-- Check file encodings
+- Use `get_drum_cell_info()` to inspect drum rack structure
+- Check console output for number of replaced samples
+- Verify file paths are correctly formatted for your OS
+
+## Best Practices
+
+### Working with Sample Paths
+- Use absolute paths when possible
+- Maintain consistent path separator style
+- Verify sample files exist before processing
+- Consider using sample path validation
+
+### File Handling
+- Always use Path objects for file paths
+- Handle file operations with try/except blocks
+- Verify input files before processing
+- Create backups before modification
 
 ## Contributing
 To contribute to this project:
