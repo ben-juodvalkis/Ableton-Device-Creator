@@ -88,15 +88,24 @@ def organize_drum_samples(donor_path: Path, batch_index: int) -> tuple[List[str]
     snare_clap_all = get_all_samples_from_folders(drums_path, ['Snare', 'Clap'])
     kick_all = get_all_samples_from_folders(drums_path, ['Kick'])
     
+    # Calculate how many complete sets we can make
+    min_samples = min(
+        len(remaining_all),
+        len(hihat_shaker_all),
+        len(snare_clap_all),
+        len(kick_all)
+    )
+    max_complete_sets = min_samples // 8
+    
+    # If we're beyond the number of complete sets, stop
+    if batch_index >= max_complete_sets:
+        return [], "", False
+    
     # Get the current batch for each category
     remaining_samples = get_sample_batch(remaining_all, batch_index)
     hihat_shaker_samples = get_sample_batch(hihat_shaker_all, batch_index)
     snare_clap_samples = get_sample_batch(snare_clap_all, batch_index)
     kick_samples = get_sample_batch(kick_all, batch_index)
-    
-    # Check if we have any samples in this batch
-    if not any([remaining_samples, hihat_shaker_samples, snare_clap_samples, kick_samples]):
-        return [], "", False
     
     # Get the descriptive name from the first kick sample (if available)
     kick_descriptor = ""
@@ -116,18 +125,20 @@ def organize_drum_samples(donor_path: Path, batch_index: int) -> tuple[List[str]
     print(f"Snares/Claps: {len(snare_clap_samples)}")
     print(f"Kicks: {len(kick_samples)}")
     
+    # Print total samples available in each category
+    print(f"\nTotal samples available:")
+    print(f"Remaining percussion: {len(remaining_all)}")
+    print(f"Hihats/Shakers: {len(hihat_shaker_all)}")
+    print(f"Snares/Claps: {len(snare_clap_all)}")
+    print(f"Kicks: {len(kick_all)}")
+    print(f"Complete sets possible: {max_complete_sets}")
+    
     # Ensure we have exactly 32 samples (pad with None if necessary)
     while len(all_samples) < 32:
         all_samples.append(None)
     
-    # Check if we have more samples in any category
-    max_samples = max(
-        len(remaining_all),
-        len(hihat_shaker_all),
-        len(snare_clap_all),
-        len(kick_all)
-    )
-    has_more = (batch_index + 1) * 8 < max_samples
+    # Check if we have more complete sets available
+    has_more = batch_index + 1 < max_complete_sets
     
     # Generate rack name
     rack_name = f"{library_name} {batch_index + 1:02d}"
