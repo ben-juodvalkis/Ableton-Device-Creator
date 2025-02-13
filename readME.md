@@ -7,10 +7,10 @@ The Ableton Device File Processor is a Python-based system for manipulating Able
 ## Features
 - Creates organized drum racks from sample libraries
 - Maintains consistent pad layout across racks:
-  - First 8 pads: Auxiliary percussion
-  - Next 8 pads: Hi-hats and shakers
-  - Next 8 pads: Snares and claps
-  - Last 8 pads: Kick drums
+  - First 8 pads: Kick drums
+  - Next 8 pads: sSnares and claps
+  - Next 8 pads: Hi-hats and shaker
+  - Last 8 pads: Auxiliary percussion
 - Processes multiple libraries in batch
 - Preserves all device settings from template rack
 
@@ -70,19 +70,21 @@ ableton-device-processor/
 1. Scan library folders for samples
 2. Organize samples into categories
 3. Create multiple drum racks, each with:
-   - 8 auxiliary percussion samples
-   - 8 hi-hat/shaker samples
-   - 8 snare/clap samples
    - 8 kick samples
+   - 8 snare/clap samples
+   - 8 hi-hat/shaker samples
+   - 8 auxiliary percussion samples
+
 4. Save racks in organized output structure
 
 ## Sample Organization
 
 ### Categories
-- **Auxiliary Percussion**: Any percussion except kicks, snares, claps, hi-hats, shakers, and cymbals
-- **Hi-hats/Shakers**: Closed hi-hats and shakers (excludes open hi-hats)
-- **Snares/Claps**: All snare and clap samples
 - **Kicks**: All kick drum samples
+- **Snares/Claps**: All snare and clap samples
+- **Hi-hats/Shakers**: All hi-hat and shaker samples
+- **Auxiliary Percussion**: Any percussion except kicks, snares, claps, hi-hats, shakers, and cymbals
+
 
 ### Sorting
 - Samples within each category are sorted alphabetically by their descriptive names
