@@ -15,8 +15,8 @@ def get_descriptive_name(filename: str) -> str:
         return parts[1].lower()  # Return description part in lowercase
     return filename.lower()
 
-def get_samples_from_folders(base_path: Path, folders: List[str], count: int, exclude_patterns: List[str] = None) -> List[str]:
-    """Get specified number of samples from given folders"""
+def get_all_samples_from_folders(base_path: Path, folders: List[str], exclude_patterns: List[str] = None) -> List[str]:
+    """Get all samples from given folders"""
     samples = []
     for folder in folders:
         folder_path = base_path / folder
@@ -37,14 +37,38 @@ def get_samples_from_folders(base_path: Path, folders: List[str], count: int, ex
     # Sort by descriptive name
     samples.sort(key=lambda x: get_descriptive_name(Path(x).stem))
     
-    # Return requested number of samples
-    return samples[:count]
+    return samples
 
-def organize_drum_samples(donor_path: Path) -> List[str]:
-    """Organize samples into 4 groups of 8 for the drum rack"""
+def get_sample_batch(samples: List[str], batch_index: int, batch_size: int = 8) -> List[str]:
+    """Get a batch of samples starting from batch_index * batch_size"""
+    start_idx = batch_index * batch_size
+    end_idx = start_idx + batch_size
+    return samples[start_idx:end_idx]
+
+def get_library_name(donor_path: Path) -> str:
+    """Extract the library name from the donor path"""
+    # For path like "/Users/Shared/Music/Soundbanks/Native Instruments/Expansions/Amplified Funk Library"
+    # Return "Amplified Funk"
+    try:
+        # Get the parent folder name (e.g. "Amplified Funk Library")
+        library_name = donor_path.name
+        # Remove common suffixes
+        library_name = library_name.replace(" Library", "").replace(" Collection", "").strip()
+        return library_name
+    except Exception:
+        return "Drum Rack"  # Fallback name
+
+def organize_drum_samples(donor_path: Path, batch_index: int) -> tuple[List[str], str, bool]:
+    """
+    Organize samples into 4 groups of 8 for the drum rack
+    Returns (samples_list, rack_name, has_more_samples)
+    """
     drums_path = donor_path / 'Samples' / 'Drums'
     
-    # Get remaining percussion samples (first 8 pads)
+    # Get library name
+    library_name = get_library_name(donor_path)
+    
+    # Get all samples for each category
     excluded_folders = {'Kick', 'Snare', 'Clap', 'Hihat', 'Shaker', 'Cymbal'}
     remaining_folders = []
     
@@ -56,30 +80,37 @@ def organize_drum_samples(donor_path: Path) -> List[str]:
         print(f"Warning: Error scanning drums directory: {e}")
     
     if not remaining_folders:
-        remaining_folders = ['Percussion', 'Tom']  # Fallback to default folders
-        
-    print(f"Using folders for first set: {', '.join(remaining_folders)}")
-    remaining_samples = get_samples_from_folders(drums_path, remaining_folders, 8)
+        remaining_folders = ['Percussion', 'Tom']
     
-    # Get hihat and shaker samples (next 8 pads)
-    hihat_shaker_samples = get_samples_from_folders(
-        drums_path, 
-        ['Hihat', 'Shaker'], 
-        8,
-        exclude_patterns=['OpenHH']
-    )
+    # Get all samples for each category
+    remaining_all = get_all_samples_from_folders(drums_path, remaining_folders)
+    hihat_shaker_all = get_all_samples_from_folders(drums_path, ['Hihat', 'Shaker'], ['OpenHH'])
+    snare_clap_all = get_all_samples_from_folders(drums_path, ['Snare', 'Clap'])
+    kick_all = get_all_samples_from_folders(drums_path, ['Kick'])
     
-    # Get snare and clap samples (next 8 pads)
-    snare_clap_samples = get_samples_from_folders(drums_path, ['Snare', 'Clap'], 8)
+    # Get the current batch for each category
+    remaining_samples = get_sample_batch(remaining_all, batch_index)
+    hihat_shaker_samples = get_sample_batch(hihat_shaker_all, batch_index)
+    snare_clap_samples = get_sample_batch(snare_clap_all, batch_index)
+    kick_samples = get_sample_batch(kick_all, batch_index)
     
-    # Get kick samples (last 8 pads)
-    kick_samples = get_samples_from_folders(drums_path, ['Kick'], 8)
+    # Check if we have any samples in this batch
+    if not any([remaining_samples, hihat_shaker_samples, snare_clap_samples, kick_samples]):
+        return [], "", False
+    
+    # Get the descriptive name from the first kick sample (if available)
+    kick_descriptor = ""
+    if kick_samples:
+        first_kick = Path(kick_samples[0]).stem
+        parts = first_kick.split(' ', 1)
+        if len(parts) > 1:
+            kick_descriptor = parts[1]
     
     # Combine all samples in order
     all_samples = remaining_samples + hihat_shaker_samples + snare_clap_samples + kick_samples
     
     # Print summary of what we found
-    print(f"\nSample distribution:")
+    print(f"\nBatch {batch_index + 1} sample distribution:")
     print(f"Remaining percussion: {len(remaining_samples)}")
     print(f"Hihats/Shakers: {len(hihat_shaker_samples)}")
     print(f"Snares/Claps: {len(snare_clap_samples)}")
@@ -89,37 +120,70 @@ def organize_drum_samples(donor_path: Path) -> List[str]:
     while len(all_samples) < 32:
         all_samples.append(None)
     
-    return all_samples[:32]
+    # Check if we have more samples in any category
+    max_samples = max(
+        len(remaining_all),
+        len(hihat_shaker_all),
+        len(snare_clap_all),
+        len(kick_all)
+    )
+    has_more = (batch_index + 1) * 8 < max_samples
+    
+    # Generate rack name
+    rack_name = f"{library_name} {batch_index + 1:02d}"
+    if kick_descriptor:
+        rack_name += f" {kick_descriptor}"
+    
+    return all_samples[:32], rack_name, has_more
 
 def main():
     parser = argparse.ArgumentParser(description='Process Ableton device group files')
     parser.add_argument('input_file', type=str, help='Input .adg file path')
-    parser.add_argument('output_file', type=str, help='Output .adg file path')
+    parser.add_argument('output_folder', type=str, help='Output folder for .adg files')
     parser.add_argument('donor_folder', type=str, help='Path to donor samples folder')
     
     args = parser.parse_args()
     input_path = Path(args.input_file)
-    output_path = Path(args.output_file)
+    output_folder = Path(args.output_folder)
     donor_path = Path(args.donor_folder)
     
-    try:
-        # Get organized samples
-        samples = organize_drum_samples(donor_path)
-        
-        # Step 1: Decode the ADG file to XML
-        xml_content = decode_adg(input_path)
-        
-        # Step 2: Transform the XML with our organized samples
-        transformed_xml = transform_xml(xml_content, samples)
-        
-        # Step 3: Encode back to ADG
-        encode_adg(transformed_xml, output_path)
-        
-        print(f"Successfully processed {input_path} to {output_path}")
-        print(f"Replaced samples with selections from {donor_path}")
-        
-    except Exception as e:
-        print(f"Error processing file: {e}")
+    # Create output folder if it doesn't exist
+    output_folder.mkdir(parents=True, exist_ok=True)
+    
+    batch_index = 0
+    while True:
+        try:
+            # Get organized samples for this batch
+            samples, rack_name, has_more = organize_drum_samples(donor_path, batch_index)
+            
+            if not samples:
+                break
+                
+            # Create output path for this rack - use safe filename
+            safe_name = "".join(c for c in rack_name if c.isalnum() or c in " -_")
+            output_path = output_folder / f"{safe_name}.adg"
+            
+            # Decode the ADG file to XML
+            xml_content = decode_adg(input_path)
+            
+            # Transform the XML with our organized samples
+            transformed_xml = transform_xml(xml_content, samples)
+            
+            # Encode back to ADG
+            encode_adg(transformed_xml, output_path)
+            
+            print(f"Successfully created {output_path}")
+            
+            if not has_more:
+                break
+                
+            batch_index += 1
+            
+        except Exception as e:
+            print(f"Error processing batch {batch_index + 1}: {e}")
+            break
+    
+    print(f"\nCreated {batch_index + 1} drum racks in {output_folder}")
 
 if __name__ == "__main__":
     main()
