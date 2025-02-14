@@ -5,15 +5,43 @@ from typing import List, Tuple
 from decoder import decode_adg
 from encoder import encode_adg
 from transformer import transform_xml
+import wave
+import os
+
+def is_valid_audio_file(file_path: str) -> bool:
+    """Check if file is a valid audio file"""
+    try:
+        # For WAV files, try to open with wave module
+        if file_path.lower().endswith('.wav'):
+            with wave.open(file_path, 'rb') as wave_file:
+                return True
+        return False
+    except Exception:
+        return False
 
 def get_all_samples(folder_path: Path) -> List[str]:
-    """Get all wav samples from the folder"""
+    """Get all valid audio samples from the folder"""
     samples = []
+    skipped = []
     
     try:
-        # Get all .wav files and sort alphabetically
+        # Get all potential audio files
         wav_files = sorted(folder_path.glob('*.wav'))
-        samples.extend(str(f) for f in wav_files)
+        
+        # Validate each file
+        for file_path in wav_files:
+            if is_valid_audio_file(str(file_path)):
+                samples.append(str(file_path))
+            else:
+                skipped.append(file_path.name)
+        
+        if skipped:
+            print(f"Warning: Skipped {len(skipped)} invalid or corrupted files:")
+            for file in skipped[:5]:  # Show first 5 skipped files
+                print(f"- {file}")
+            if len(skipped) > 5:
+                print(f"... and {len(skipped) - 5} more")
+                
     except Exception as e:
         print(f"Warning: Error scanning directory: {e}")
     

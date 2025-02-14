@@ -2,33 +2,38 @@
 ## Technical Documentation
 
 ## Overview
-The Ableton Device File Processor is a Python-based system for creating Ableton Live drum racks (.adg) from sample libraries. It offers three main functionalities:
-1. Creating full drum racks with organized drum categories
-2. Creating percussion-only racks from percussion samples
-3. Creating drum racks from any folder of samples
+The Ableton Device File Processor is a Python-based system for creating and modifying Ableton Live drum racks (.adg). It provides several specialized scripts for different use cases.
 
 ## Features
 
-### Standard Drum Racks (NI Expansions)
-- Creates organized drum racks from Native Instruments Expansion libraries
-- Maintains consistent pad layout across racks:
-  - First 8 pads: Kick drums
-  - Next 8 pads: Snares and claps
-  - Next 8 pads: Hi-hats and shakers
-  - Last 8 pads: Auxiliary percussion
-- Names racks based on library name and first kick sample
+### 1. Native Instruments Expansion Processing
+- **Standard Drum Racks** (`main.py`, `meta_main.py`)
+  - Creates organized drum racks with consistent pad layout
+  - Groups samples by type (kicks, snares, hi-hats, etc.)
+  - Processes single or multiple expansions
 
-### Percussion-Only Racks (NI Expansions)
-- Creates 32-pad racks filled with percussion samples
-- Organizes samples alphabetically
-- Names racks based on library name (e.g., "Anima Ascent Percussion 01")
-- Creates multiple racks if library contains more than 32 samples
+- **Percussion-Only Racks** (`main_percussion.py`, `meta_main_percussion.py`)
+  - Creates 32-pad racks from percussion samples only
+  - Organizes samples alphabetically
+  - Names racks based on expansion name
 
-### Generic Sample Folder Racks
-- Creates 32-pad racks from any folder containing .wav files
-- Organizes samples alphabetically
-- Names racks based on folder structure (e.g., "Francesca Breath 01")
-- Creates multiple racks if folder contains more than 32 samples
+### 2. Generic Sample Processing
+- **Single Folder Processing** (`main_generic.py`)
+  - Creates 32-pad racks from any folder containing .wav files
+  - Organizes samples alphabetically
+  - Names racks based on folder structure
+
+- **Recursive Folder Processing** (`meta_main_folders.py`)
+  - Processes entire folder hierarchies
+  - Maintains folder structure in output
+  - Creates drum racks for each folder containing samples
+
+### 3. Macro Control Processing
+- **Batch Macro Setting** (`set_macro.py`)
+  - Sets macro values across multiple drum racks
+  - Processes files recursively in folders
+  - Updates both default and manual macro values
+  - Supports all 127 macro controls
 
 ## Installation
 
@@ -40,115 +45,143 @@ cd ableton-device-processor
 
 2. Ensure Python 3.6+ is installed
 
-## Usage
+## Usage Examples
 
-### Standard Drum Racks (NI Expansions)
+### 1. Native Instruments Expansions
 
 ```bash
-# Process a single library
+# Process single expansion
 python3 scripts/main.py input_rack.adg "/path/to/expansion/library"
 
-# Process multiple libraries
+# Process all expansions
 python3 scripts/meta_main.py input_rack.adg "/path/to/expansions/folder"
-```
 
-### Percussion-Only Racks (NI Expansions)
-
-```bash
+# Process percussion from all expansions
 python3 scripts/meta_main_percussion.py input_rack.adg "/path/to/expansions/folder"
 ```
 
-### Generic Sample Folder Racks
+### 2. Generic Sample Processing
 
 ```bash
+# Process single sample folder
 python3 scripts/main_generic.py input_rack.adg "/path/to/samples/folder"
+
+# Process folder hierarchy
+python3 scripts/meta_main_folders.py input_rack.adg "/path/to/base/folder"
 ```
 
-Examples:
+### 3. Macro Control Setting
+
 ```bash
-# Process 8dio Francesca breath samples
+# Set macro value in all racks in a folder
+python3 scripts/set_macro.py "/path/to/racks/folder" [macro_number] [value]
+
+# Examples:
+python3 scripts/set_macro.py "/Music/Drum Racks" 10 63
+python3 scripts/set_macro.py "/Music/FX Racks" 1 127
+```
+
+### Example Use Cases
+
+#### Processing Vocal Libraries
+```bash
+# Process breath samples from 8dio libraries
 python3 scripts/main_generic.py input_rack.adg "/Users/Shared/Music/Soundbanks/8dio/8Dio_Francesca/1_Francesca_Core_Library/samples/Breath"
-
-# Process 8dio Barbary breath samples
-python3 scripts/main_generic.py input_rack.adg "/Users/Shared/Music/Soundbanks/8dio/8Dio_Barbary/1_Barbary_Core_Library/Samples/Breathe"
 ```
 
-Arguments:
-- `input_rack.adg`: Template drum rack file
-- `library/folder`: Path to sample source
-
-Output Structure:
+#### Processing Sound Effects
+```bash
+# Process entire sound effects library
+python3 scripts/meta_main_folders.py input_rack.adg "/Users/Shared/Music/Samples Organized/Atmospheres"
 ```
-For NI Expansions:
+
+#### Updating Macro Controls
+```bash
+# Set reverb macro in all atmosphere racks
+python3 scripts/set_macro.py "/Music/FX/Atmosphere" 10 63
+```
+
+## Output Structure
+
+### For NI Expansions
+```
 Output/
 ├── Amplified Funk Library/
 │   ├── Amplified Funk 01 Kick.adg
 │   ├── Amplified Funk Percussion 01.adg
 │   └── ...
 └── ...
+```
 
-For Generic Folders:
-[input_rack location]/
-├── Francesca Breath Racks/
-│   ├── Francesca Breath 01.adg
-│   └── Francesca Breath 02.adg
-├── Barbary Breathe Racks/
-│   ├── Barbary Breathe 01.adg
+### For Generic Processing
+```
+Output/
+├── Category/
+│   ├── Subcategory/
+│   │   ├── Subcategory 01.adg
+│   │   └── Subcategory 02.adg
 │   └── ...
 └── ...
 ```
 
-## System Architecture
+## Script Details
 
-### Module Structure
-```
-ableton-device-processor/
-├── scripts/
-│   ├── meta_main.py           # Multi-library processor for drum racks
-│   ├── meta_main_percussion.py # Multi-library processor for percussion
-│   ├── main.py                # Single library processor for drum racks
-│   ├── main_percussion.py     # Single library processor for percussion
-│   ├── main_generic.py        # Generic folder processor
-│   ├── decoder.py             # ADG file decoder
-│   ├── transformer.py         # XML content transformer
-│   └── encoder.py             # ADG file encoder
-```
+### Main Scripts
+- **main.py**: Single expansion processor (organized by drum type)
+- **main_percussion.py**: Single expansion percussion processor
+- **main_generic.py**: Single folder processor
+- **meta_main.py**: Multi-expansion processor
+- **meta_main_percussion.py**: Multi-expansion percussion processor
+- **meta_main_folders.py**: Recursive folder processor
+- **set_macro.py**: Macro value processor
 
-### Process Flow
-1. Scan source location for samples
-2. Organize samples based on mode:
-   - Standard: Group by drum type (kicks, snares, etc.)
-   - Percussion: Alphabetical order from Percussion folder
-   - Generic: Alphabetical order from specified folder
-3. Create drum racks with organized samples
-4. Save racks in organized output structure
+### Support Scripts
+- **decoder.py**: ADG file decoder
+- **encoder.py**: ADG file encoder
+- **transformer.py**: XML content transformer
 
-## Sample Organization
+## Features by Script
 
-### Standard Mode Categories (NI Expansions)
-- **Kicks**: All kick drum samples
-- **Snares/Claps**: All snare and clap samples
-- **Hi-hats/Shakers**: All hi-hat and shaker samples (excluding open hi-hats)
-- **Auxiliary Percussion**: Any percussion except kicks, snares, claps, hi-hats, shakers, and cymbals
+### set_macro.py
+- Sets macro values in multiple drum racks
+- Processes files recursively
+- Updates both default and manual values
+- Supports macros 1-127
+- Validates value range (0-127)
+- Reports processing status
 
-### Percussion Mode (NI Expansions)
-- Uses all samples from the library's Percussion folder
-- Organizes alphabetically across 32-pad racks
+### main_generic.py
+- Processes any folder containing .wav files
+- Validates audio files before processing
+- Creates 32-pad racks
+- Names racks based on folder structure
+- Supports partial racks for remaining samples
 
-### Generic Mode
-- Uses all .wav files from specified folder
-- Organizes alphabetically across 32-pad racks
-- Creates multiple racks if needed
+### meta_main_folders.py
+- Recursively scans folder hierarchies
+- Maintains folder structure in output
+- Reports sample counts per folder
+- Processes all folders containing .wav files
+- Creates organized output structure
 
-### Sorting
-- Standard mode: Samples within each category are sorted by descriptive names
-- Percussion/Generic modes: All samples sorted alphabetically
+### main.py / meta_main.py
+- Organizes samples by drum type
+- Creates consistent pad layouts
+- Names racks based on first kick sample
+- Supports batch processing of expansions
+
+### main_percussion.py / meta_main_percussion.py
+- Focuses on percussion samples
+- Creates alphabetically organized racks
+- Names racks with expansion name
+- Supports multiple racks per expansion
 
 ## Error Handling
 - Validates input files and folders
-- Reports missing or invalid sources
-- Continues processing when possible
-- Provides detailed error messages and warnings
+- Checks for valid audio files
+- Reports invalid or corrupted files
+- Maintains processing on errors
+- Provides detailed error messages
 
 ## Contributing
 To contribute to this project:
