@@ -100,8 +100,19 @@ def transform_sampler_xml(xml_content: str, samples: List[str]) -> str:
             if not sample_path:
                 continue
                 
+            # Calculate key range based on position
+            if i == 0:  # First sample
+                key_min = 0  # Extend to bottom of keyboard
+                key_max = base_note
+            elif i == len(samples) - 1:  # Last sample
+                key_min = base_note + i
+                key_max = 127  # Extend to top of keyboard
+            else:  # Middle samples
+                key_min = base_note + i
+                key_max = key_min
+            
             # Create sample part element
-            part = create_sample_part(i, sample_path, base_note + i)
+            part = create_sample_part(i, sample_path, key_min, key_max, base_note + i)
             new_parts.append(part)
             
         return ET.tostring(root, encoding='unicode', xml_declaration=True)
@@ -109,18 +120,22 @@ def transform_sampler_xml(xml_content: str, samples: List[str]) -> str:
     except Exception as e:
         raise Exception(f"Error transforming sampler XML: {e}")
 
-def create_sample_part(index: int, sample_path: str, note: int) -> ET.Element:
+def create_sample_part(index: int, sample_path: str, key_min: int, key_max: int, root_key: int) -> ET.Element:
     """Create a sample part element for the given sample"""
     part = ET.Element("MultiSamplePart")
     part.set("Id", str(index))
     part.set("HasImportedSlicePoints", "false")
     
-    # Set key range to single note with matching crossfade values
+    # Set name from filename (without extension)
+    name = Path(sample_path).stem
+    ET.SubElement(part, "Name").set("Value", name)
+    
+    # Set key range with matching crossfade values
     key_range = ET.SubElement(part, "KeyRange")
-    ET.SubElement(key_range, "Min").set("Value", str(note))
-    ET.SubElement(key_range, "Max").set("Value", str(note))
-    ET.SubElement(key_range, "CrossfadeMin").set("Value", str(note))
-    ET.SubElement(key_range, "CrossfadeMax").set("Value", str(note))
+    ET.SubElement(key_range, "Min").set("Value", str(key_min))
+    ET.SubElement(key_range, "Max").set("Value", str(key_max))
+    ET.SubElement(key_range, "CrossfadeMin").set("Value", str(key_min))
+    ET.SubElement(key_range, "CrossfadeMax").set("Value", str(key_max))
     
     # Set velocity range
     vel_range = ET.SubElement(part, "VelocityRange")
@@ -136,8 +151,8 @@ def create_sample_part(index: int, sample_path: str, note: int) -> ET.Element:
     ET.SubElement(selector_range, "CrossfadeMin").set("Value", "0")
     ET.SubElement(selector_range, "CrossfadeMax").set("Value", "127")
     
-    # Set root key to match zone
-    ET.SubElement(part, "RootKey").set("Value", str(note))
+    # Set root key
+    ET.SubElement(part, "RootKey").set("Value", str(root_key))
     
     # Set sample reference
     sample_ref = ET.SubElement(part, "SampleRef")

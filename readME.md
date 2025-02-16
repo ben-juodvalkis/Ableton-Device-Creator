@@ -29,14 +29,23 @@ The Ableton Device File Processor is a Python-based system for creating and modi
   - Creates drum racks for each folder containing samples
 
 ### 3. Sampler Instrument Creation
-- **Multi-Sample Instruments** (`sampler/main_sampler.py`)
+- **Single Folder Processing** (`sampler/main_sampler.py`)
   - Creates sampler instruments with samples mapped chromatically
   - Starts mapping from C2 (MIDI note 48)
   - Supports WAV, AIF, and AIFF files
   - Creates multiple instruments when more than 32 samples
   - Fills partial instruments with samples from previous rack
   - Maintains consistent 32-sample layouts
+  - Extends first and last samples across remaining keys
   - Preserves folder structure in output
+
+- **Recursive Folder Processing** (`sampler/meta_main_sampler.py`)
+  - Processes entire folder hierarchies into sampler instruments
+  - Maintains folder structure in output
+  - Creates instruments for each folder containing samples
+  - Reports sample counts per folder
+  - Supports WAV, AIF, and AIFF files
+  - Processes all subfolders recursively
 
 ### 4. Macro Control Processing
 - **Batch Macro Setting** (`drum_rack/set_macro.py`)
@@ -80,11 +89,11 @@ python3 scripts/drum_rack/meta_main_folders.py input_rack.adg "/path/to/base/fol
 ### 3. Sampler Instrument Creation
 
 ```bash
-# Create sampler instruments from folder
+# Create sampler instruments from single folder
 python3 scripts/sampler/main_sampler.py sampler-rack.adg "/path/to/samples/folder"
 
-# Example with specific output folder
-python3 scripts/sampler/main_sampler.py sampler-rack.adg "/Samples/Pianos" --output-folder "/Output/Pianos"
+# Process entire sample library recursively
+python3 scripts/sampler/meta_main_sampler.py sampler-rack.adg "/path/to/sample/library"
 ```
 
 ### 4. Macro Control Setting
@@ -129,6 +138,7 @@ Output/
 - **meta_main.py**: Multi-expansion processor
 - **meta_main_percussion.py**: Multi-expansion percussion processor
 - **meta_main_folders.py**: Recursive folder processor
+- **meta_main_sampler.py**: Recursive sampler processor
 - **set_macro.py**: Macro value processor
 
 ### Support Scripts
@@ -145,9 +155,19 @@ Output/
 - Supports WAV, AIF, and AIFF files
 - Creates multiple instruments for >32 samples
 - Fills partial instruments with previous samples
+- Extends first and last samples across remaining keys
 - Maintains folder structure in output
 - Reports processing status and sample counts
 - Validates audio files before processing
+
+### meta_main_sampler.py
+- Recursively processes folder hierarchies
+- Creates sampler instruments for each folder
+- Maintains original folder structure
+- Reports detailed sample counts
+- Supports multiple audio formats
+- Shows processing progress
+- Handles errors gracefully
 
 ## Error Handling
 - Validates input files and folders
