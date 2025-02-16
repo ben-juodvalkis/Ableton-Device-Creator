@@ -2,34 +2,44 @@
 ## Technical Documentation
 
 ## Overview
-The Ableton Device File Processor is a Python-based system for creating and modifying Ableton Live drum racks (.adg). It provides several specialized scripts for different use cases.
+The Ableton Device File Processor is a Python-based system for creating and modifying Ableton Live drum racks (.adg) and sampler instruments. It provides several specialized scripts for different use cases.
 
 ## Features
 
 ### 1. Native Instruments Expansion Processing
-- **Standard Drum Racks** (`main.py`, `meta_main.py`)
+- **Standard Drum Racks** (`drum_rack/main.py`, `drum_rack/meta_main.py`)
   - Creates organized drum racks with consistent pad layout
   - Groups samples by type (kicks, snares, hi-hats, etc.)
   - Processes single or multiple expansions
 
-- **Percussion-Only Racks** (`main_percussion.py`, `meta_main_percussion.py`)
+- **Percussion-Only Racks** (`drum_rack/main_percussion.py`, `drum_rack/meta_main_percussion.py`)
   - Creates 32-pad racks from percussion samples only
   - Organizes samples alphabetically
   - Names racks based on expansion name
 
 ### 2. Generic Sample Processing
-- **Single Folder Processing** (`main_generic.py`)
-  - Creates 32-pad racks from any folder containing .wav files
+- **Single Folder Processing** (`drum_rack/main_generic.py`)
+  - Creates 32-pad racks from any folder containing audio files
   - Organizes samples alphabetically
   - Names racks based on folder structure
 
-- **Recursive Folder Processing** (`meta_main_folders.py`)
+- **Recursive Folder Processing** (`drum_rack/meta_main_folders.py`)
   - Processes entire folder hierarchies
   - Maintains folder structure in output
   - Creates drum racks for each folder containing samples
 
-### 3. Macro Control Processing
-- **Batch Macro Setting** (`set_macro.py`)
+### 3. Sampler Instrument Creation
+- **Multi-Sample Instruments** (`sampler/main_sampler.py`)
+  - Creates sampler instruments with samples mapped chromatically
+  - Starts mapping from C2 (MIDI note 48)
+  - Supports WAV, AIF, and AIFF files
+  - Creates multiple instruments when more than 32 samples
+  - Fills partial instruments with samples from previous rack
+  - Maintains consistent 32-sample layouts
+  - Preserves folder structure in output
+
+### 4. Macro Control Processing
+- **Batch Macro Setting** (`drum_rack/set_macro.py`)
   - Sets macro values across multiple drum racks
   - Processes files recursively in folders
   - Updates both default and manual macro values
@@ -51,69 +61,54 @@ cd ableton-device-processor
 
 ```bash
 # Process single expansion
-python3 scripts/main.py input_rack.adg "/path/to/expansion/library"
+python3 scripts/drum_rack/main.py input_rack.adg "/path/to/expansion/library"
 
 # Process all expansions
-python3 scripts/meta_main.py input_rack.adg "/path/to/expansions/folder"
-
-# Process percussion from all expansions
-python3 scripts/meta_main_percussion.py input_rack.adg "/path/to/expansions/folder"
+python3 scripts/drum_rack/meta_main.py input_rack.adg "/path/to/expansions/folder"
 ```
 
 ### 2. Generic Sample Processing
 
 ```bash
 # Process single sample folder
-python3 scripts/main_generic.py input_rack.adg "/path/to/samples/folder"
+python3 scripts/drum_rack/main_generic.py input_rack.adg "/path/to/samples/folder"
 
 # Process folder hierarchy
-python3 scripts/meta_main_folders.py input_rack.adg "/path/to/base/folder"
+python3 scripts/drum_rack/meta_main_folders.py input_rack.adg "/path/to/base/folder"
 ```
 
-### 3. Macro Control Setting
+### 3. Sampler Instrument Creation
+
+```bash
+# Create sampler instruments from folder
+python3 scripts/sampler/main_sampler.py sampler-rack.adg "/path/to/samples/folder"
+
+# Example with specific output folder
+python3 scripts/sampler/main_sampler.py sampler-rack.adg "/Samples/Pianos" --output-folder "/Output/Pianos"
+```
+
+### 4. Macro Control Setting
 
 ```bash
 # Set macro value in all racks in a folder
-python3 scripts/set_macro.py "/path/to/racks/folder" [macro_number] [value]
-
-# Examples:
-python3 scripts/set_macro.py "/Music/Drum Racks" 10 63
-python3 scripts/set_macro.py "/Music/FX Racks" 1 127
-```
-
-### Example Use Cases
-
-#### Processing Vocal Libraries
-```bash
-# Process breath samples from 8dio libraries
-python3 scripts/main_generic.py input_rack.adg "/Users/Shared/Music/Soundbanks/8dio/8Dio_Francesca/1_Francesca_Core_Library/samples/Breath"
-```
-
-#### Processing Sound Effects
-```bash
-# Process entire sound effects library
-python3 scripts/meta_main_folders.py input_rack.adg "/Users/Shared/Music/Samples Organized/Atmospheres"
-```
-
-#### Updating Macro Controls
-```bash
-# Set reverb macro in all atmosphere racks
-python3 scripts/set_macro.py "/Music/FX/Atmosphere" 10 63
+python3 scripts/drum_rack/set_macro.py "/path/to/racks/folder" [macro_number] [value]
 ```
 
 ## Output Structure
 
-### For NI Expansions
+### For Sampler Instruments
 ```
-Output/
-├── Amplified Funk Library/
-│   ├── Amplified Funk 01 Kick.adg
-│   ├── Amplified Funk Percussion 01.adg
+output-sampler/
+├── Category/
+│   ├── Subcategory/
+│   │   ├── Subcategory 01.adg  # First 32 samples
+│   │   ├── Subcategory 02.adg  # Next 32 samples
+│   │   └── Subcategory 03.adg  # Remaining samples (filled to 32)
 │   └── ...
 └── ...
 ```
 
-### For Generic Processing
+### For Drum Racks
 ```
 Output/
 ├── Category/
@@ -127,54 +122,32 @@ Output/
 ## Script Details
 
 ### Main Scripts
-- **main.py**: Single expansion processor (organized by drum type)
+- **main.py**: Single expansion processor
 - **main_percussion.py**: Single expansion percussion processor
 - **main_generic.py**: Single folder processor
+- **main_sampler.py**: Sampler instrument creator
 - **meta_main.py**: Multi-expansion processor
 - **meta_main_percussion.py**: Multi-expansion percussion processor
 - **meta_main_folders.py**: Recursive folder processor
 - **set_macro.py**: Macro value processor
 
 ### Support Scripts
-- **decoder.py**: ADG file decoder
-- **encoder.py**: ADG file encoder
-- **transformer.py**: XML content transformer
+- **utils/decoder.py**: ADG file decoder
+- **utils/encoder.py**: ADG file encoder
+- **drum_rack/transformer.py**: Drum rack XML transformer
+- **sampler/transformer.py**: Sampler XML transformer
 
 ## Features by Script
 
-### set_macro.py
-- Sets macro values in multiple drum racks
-- Processes files recursively
-- Updates both default and manual values
-- Supports macros 1-127
-- Validates value range (0-127)
-- Reports processing status
-
-### main_generic.py
-- Processes any folder containing .wav files
-- Validates audio files before processing
-- Creates 32-pad racks
-- Names racks based on folder structure
-- Supports partial racks for remaining samples
-
-### meta_main_folders.py
-- Recursively scans folder hierarchies
+### main_sampler.py
+- Creates sampler instruments from audio folders
+- Maps samples chromatically from C2
+- Supports WAV, AIF, and AIFF files
+- Creates multiple instruments for >32 samples
+- Fills partial instruments with previous samples
 - Maintains folder structure in output
-- Reports sample counts per folder
-- Processes all folders containing .wav files
-- Creates organized output structure
-
-### main.py / meta_main.py
-- Organizes samples by drum type
-- Creates consistent pad layouts
-- Names racks based on first kick sample
-- Supports batch processing of expansions
-
-### main_percussion.py / meta_main_percussion.py
-- Focuses on percussion samples
-- Creates alphabetically organized racks
-- Names racks with expansion name
-- Supports multiple racks per expansion
+- Reports processing status and sample counts
+- Validates audio files before processing
 
 ## Error Handling
 - Validates input files and folders
