@@ -1,3 +1,4 @@
+# decoder.py
 import gzip
 from pathlib import Path
 
@@ -16,4 +17,4 @@ def decode_adg(adg_path: Path) -> str:
             xml_content = f.read().decode('utf-8')
         return xml_content
     except Exception as e:
-        raise Exception(f"Error decoding ADG file: {e}") 
+        raise Exception(f"Error decoding ADG file: {e}")

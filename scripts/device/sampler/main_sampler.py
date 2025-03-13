@@ -2,10 +2,12 @@
 import argparse
 from pathlib import Path
 from typing import List, Tuple
-import xml.etree.ElementTree as ET
-from decoder import decode_adg
-from encoder import encode_adg
 import wave
+import os
+import sys
+import xml.etree.ElementTree as ET
+from utils.decoder import decode_adg
+from utils.encoder import encode_adg
 
 def is_valid_audio_file(file_path: str) -> bool:
     """Check if file is a valid audio file"""

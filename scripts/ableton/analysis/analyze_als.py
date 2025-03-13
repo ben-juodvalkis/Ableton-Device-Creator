@@ -16,11 +16,11 @@ tempo, and time signature.
 ## Installation
 
 1. Save this script to:
-   `/Users/Shared/DevWork/GitHub/Maestro-Modern/scripts/analyze_als.py`
+   `/Users/Shared/DevWork/GitHub/Ableton Device Creator/scripts/ableton/analysis/analyze_als.py`
 
 2. Make the script executable:
    ```bash
-   chmod +x /Users/Shared/DevWork/GitHub/Maestro-Modern/scripts/analyze_als.py
+   chmod +x /Users/Shared/DevWork/GitHub/Ableton Device Creator/scripts/ableton/analysis/analyze_als.py
    ```
 
 3. Set up the macOS Quick Action:
@@ -35,7 +35,7 @@ tempo, and time signature.
       - Pass input: as arguments
       - Script content:
         ```bash
-        /usr/bin/python3 /Users/Shared/DevWork/GitHub/Maestro-Modern/scripts/analyze_als.py "$1"
+        /usr/bin/python3 /Users/Shared/DevWork/GitHub/Ableton Device Creator/scripts/ableton/analysis/analyze_als.py "$1"
         ```
    f. Save as "Analyze Ableton Projects"
 

@@ -2,8 +2,8 @@
 import argparse
 from pathlib import Path
 import xml.etree.ElementTree as ET
-from decoder import decode_adg
-from encoder import encode_adg
+from utils.decoder import decode_adg
+from utils.encoder import encode_adg
 
 def set_macro_value(xml_content: str, macro_number: int, value: int) -> str:
     """Set macro value in the XML content"""

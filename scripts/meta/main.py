@@ -77,7 +77,7 @@ def main():
             # Create command with output folder
             cmd = [
                 sys.executable,
-                'scripts/main.py',
+                'scripts/device/drum_rack/main.py',
                 str(input_path),
                 str(library),
                 '--output-folder',

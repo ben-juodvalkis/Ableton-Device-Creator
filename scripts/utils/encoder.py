@@ -1,3 +1,4 @@
+# encoder.py
 import gzip
 from pathlib import Path
 
@@ -13,4 +14,4 @@ def encode_adg(xml_content: str, output_path: Path) -> None:
         with gzip.open(output_path, 'wb') as f:
             f.write(xml_content.encode('utf-8'))
     except Exception as e:
-        raise Exception(f"Error encoding ADG file: {e}") 
+        raise Exception(f"Error encoding ADG file: {e}")

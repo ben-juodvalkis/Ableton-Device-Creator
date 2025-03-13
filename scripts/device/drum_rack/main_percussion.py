@@ -2,9 +2,9 @@
 import argparse
 from pathlib import Path
 from typing import List, Tuple
-from decoder import decode_adg
-from encoder import encode_adg
-from transformer import transform_xml
+from utils.decoder import decode_adg
+from utils.encoder import encode_adg
+from utils.transformer import transform_xml
 
 def get_all_percussion_samples(donor_path: Path) -> List[str]:
     """Get all percussion samples from the library"""
