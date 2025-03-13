@@ -90,17 +90,23 @@ logging.basicConfig(
 )
 
 def decode_time_signature(value):
-    """Decode time signature from Ableton's internal value."""
+    """
+    Decode Ableton's numeric time signature value.
+    The value appears to be encoded where:
+    - 201 = 4/4
+    - 202 = 5/4
+    - 203 = 6/4
+    etc.
+    """
     try:
         value = int(value)
-        # Ableton uses 201 for 4/4, 203 for 6/4, etc.
-        # The pattern seems to be: 201 = 4/4, 202 = 5/4, 203 = 6/4, etc.
         if value >= 201:
-            numerator = value - 197  # 201 -> 4, 202 -> 5, 203 -> 6
-            return f"{numerator}/4"
-        return f"Unknown ({value})"
+            numerator = value - 197  # 201 - 197 = 4 (for 4/4)
+            denominator = 4  # Appears to always be 4 in the examples seen
+            return f"{numerator}/{denominator}"
     except (ValueError, TypeError):
-        return "Unknown"
+        pass
+    return f"Unknown ({value})"
 
 def sanitize_filename(filename):
     """Remove or replace invalid characters in filename."""
@@ -165,13 +171,70 @@ def extract_project_info(als_path):
             logging.debug("Parsing XML content")
             tree = ET.fromstring(xml_content)
             
-            # Extract time signature from the TimeSignature/Manual element
-            logging.debug("Extracting time signature")
-            time_sig = tree.find('.//TimeSignature/Manual')
+            # Log the root element and its immediate children for debugging
+            logging.debug(f"Root element: {tree.tag}")
+            for child in tree:
+                logging.debug(f"Child element: {child.tag}")
+            
+            # First try to find time signature in RemoteableTimeSignature structure
+            time_sig = tree.find('.//TimeSignature/TimeSignatures/RemoteableTimeSignature')
+            time_sig_source = "RemoteableTimeSignature"
+            
             if time_sig is not None:
-                time_sig_value = time_sig.get('Value')
-                project_info['time_signature'] = decode_time_signature(time_sig_value)
-                logging.debug(f"Found time signature value: {time_sig_value} -> {project_info['time_signature']}")
+                numerator = time_sig.find('Numerator')
+                denominator = time_sig.find('Denominator')
+                if numerator is not None and denominator is not None:
+                    time_sig_value = f"{numerator.get('Value')}/{denominator.get('Value')}"
+                    logging.debug(f"Found time signature value: {time_sig_value} (from {time_sig_source})")
+                    project_info['time_signature'] = time_sig_value
+                    logging.debug(f"Decoded time signature: {project_info['time_signature']}")
+            
+            # If not found, try automation (this is the actual time signature)
+            if project_info['time_signature'] is None:
+                automation_path = './/AutomationEnvelopes/Envelopes/AutomationEnvelope[@Id="0"]/Automation/Events/EnumEvent'
+                time_sig = tree.find(automation_path)
+                time_sig_source = "automation"
+                
+                if time_sig is not None:
+                    time_sig_value = time_sig.get('Value')
+                    if time_sig_value is None:
+                        time_sig_value = time_sig.text
+                    logging.debug(f"Found time signature value: {time_sig_value} (from {time_sig_source})")
+                    project_info['time_signature'] = decode_time_signature(time_sig_value)
+                    logging.debug(f"Decoded time signature: {project_info['time_signature']}")
+            
+            # If still not found, try project settings
+            if project_info['time_signature'] is None:
+                project_paths = [
+                    './/TimeSignature/EnumEvent',
+                    './/TimeSignature/Value',
+                    './/TimeSignature/Manual/Value',
+                    './/TimeSignature/Manual/EnumEvent',
+                    './/TimeSignature/Manual',
+                    './/TimeSignature',
+                    './/LiveSet/TimeSignature/EnumEvent',
+                    './/LiveSet/TimeSignature/Value',
+                    './/LiveSet/TimeSignature/Manual/Value',
+                    './/LiveSet/TimeSignature/Manual/EnumEvent',
+                    './/LiveSet/TimeSignature/Manual',
+                    './/LiveSet/TimeSignature'
+                ]
+                
+                for path in project_paths:
+                    element = tree.find(path)
+                    if element is not None:
+                        time_sig = element
+                        time_sig_source = "project settings"
+                        logging.debug(f"Found time signature element at path: {path}")
+                        break
+                
+                if time_sig is not None:
+                    time_sig_value = time_sig.get('Value')
+                    if time_sig_value is None:
+                        time_sig_value = time_sig.text
+                    logging.debug(f"Found time signature value: {time_sig_value} (from {time_sig_source})")
+                    project_info['time_signature'] = decode_time_signature(time_sig_value)
+                    logging.debug(f"Decoded time signature: {project_info['time_signature']}")
             
             logging.debug("Extracting tempo")
             tempo = tree.find('.//Mixer/Tempo/Manual')
@@ -179,31 +242,26 @@ def extract_project_info(als_path):
                 project_info['tempo'] = tempo.get('Value')
                 logging.debug(f"Found tempo: {project_info['tempo']}")
         
-        # Only rename if this isn't already a renamed file
-        if not any(x in project_info['filename'] for x in ['bpm', 'unknown']):
-            # Generate new filename
-            new_filename = generate_new_filename(
-                project_info['filename'],
-                project_info['file_created'],
-                project_info['tempo'],
-                project_info['time_signature']
-            )
-            
-            # Rename the file
-            dir_path = os.path.dirname(als_path)
-            new_path = os.path.join(dir_path, new_filename)
-            
-            if als_path != new_path:
-                try:
-                    os.rename(als_path, new_path)
-                    project_info['new_filename'] = new_filename
-                    project_info['new_path'] = new_path
-                    logging.info(f"Renamed file to: {new_filename}")
-                except Exception as e:
-                    logging.error(f"Error renaming file {als_path}: {str(e)}")
-                    project_info['new_filename'] = project_info['filename']
-                    project_info['new_path'] = project_info['path']
-            else:
+        # Generate new filename
+        new_filename = generate_new_filename(
+            project_info['filename'],
+            project_info['file_created'],
+            project_info['tempo'],
+            project_info['time_signature']
+        )
+        
+        # Rename the file
+        dir_path = os.path.dirname(als_path)
+        new_path = os.path.join(dir_path, new_filename)
+        
+        if als_path != new_path:
+            try:
+                os.rename(als_path, new_path)
+                project_info['new_filename'] = new_filename
+                project_info['new_path'] = new_path
+                logging.info(f"Renamed file to: {new_filename}")
+            except Exception as e:
+                logging.error(f"Error renaming file {als_path}: {str(e)}")
                 project_info['new_filename'] = project_info['filename']
                 project_info['new_path'] = project_info['path']
         else:
