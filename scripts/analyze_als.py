@@ -1,14 +1,15 @@
-
 """
 # Ableton Project Analyzer
 
 This script analyzes Ableton Live project files (.als) and generates a CSV report containing
-project metadata and musical information.
+project metadata and musical information. It also renames the files to include creation date,
+tempo, and time signature.
 
 ## Features
 - Recursively scans directories for .als files
 - Extracts musical information (tempo, time signature)
 - Includes file metadata (creation date, size, etc.)
+- Renames files with format: original_name [YYYY-MM-DD][BPM][TIME_SIG].als
 - Outputs results to a CSV file in the input directory
 - Detailed logging to Desktop for troubleshooting
 
@@ -74,6 +75,7 @@ from io import BytesIO
 import sys
 import logging
 from datetime import datetime
+import re
 
 # Set up logging
 log_dir = os.path.expanduser("~/Desktop")
@@ -106,6 +108,42 @@ def decode_time_signature(value):
         pass
     return f"Unknown ({value})"
 
+def sanitize_filename(filename):
+    """Remove or replace invalid characters in filename."""
+    # Replace invalid characters with underscores
+    invalid_chars = r'[<>:"/\\|?*]'
+    return re.sub(invalid_chars, '_', filename)
+
+def generate_new_filename(original_name, created_date, tempo, time_signature):
+    """Generate new filename with metadata."""
+    # Remove .als extension
+    base_name = os.path.splitext(original_name)[0]
+    
+    # Get parent folder's first word
+    dir_path = os.path.dirname(original_name)
+    parent_folder = os.path.basename(dir_path)
+    first_word = parent_folder.split()[0] if parent_folder else ""
+    
+    # Format creation date
+    date_str = datetime.strptime(created_date, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+    
+    # Format tempo and time signature
+    tempo_str = f"{int(float(tempo))}bpm" if tempo else "unknown-bpm"
+    time_sig_str = time_signature.replace('/', '-') if time_signature else "unknown-time"
+    
+    # Construct new filename
+    # Format: ParentWord_OriginalName_YYYY-MM-DD_120bpm_4-4.als
+    components = []
+    if first_word:
+        components.append(first_word)
+    components.append(base_name)
+    components.append(date_str)
+    components.append(tempo_str)
+    components.append(time_sig_str)
+    
+    new_name = "_".join(components) + ".als"
+    return sanitize_filename(new_name)
+
 def extract_project_info(als_path):
     """Extract information from an Ableton Live project file."""
     logging.info(f"Attempting to process file: {als_path}")
@@ -115,14 +153,13 @@ def extract_project_info(als_path):
         
         project_info = {
             'filename': os.path.basename(als_path),
-                        'time_signature': None,
+            'time_signature': None,
             'tempo': None,
             'path': als_path,
             'file_size_mb': round(file_stats.st_size / (1024 * 1024), 2),
             'file_created': datetime.fromtimestamp(file_stats.st_birthtime).strftime('%Y-%m-%d %H:%M:%S'),
             'file_modified': datetime.fromtimestamp(file_stats.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
             'file_last_accessed': datetime.fromtimestamp(file_stats.st_atime).strftime('%Y-%m-%d %H:%M:%S'),
-
         }
         
         # Read the .als file as gzip
@@ -147,6 +184,32 @@ def extract_project_info(als_path):
             if tempo is not None:
                 project_info['tempo'] = tempo.get('Value')
                 logging.debug(f"Found tempo: {project_info['tempo']}")
+        
+        # Generate new filename
+        new_filename = generate_new_filename(
+            project_info['filename'],
+            project_info['file_created'],
+            project_info['tempo'],
+            project_info['time_signature']
+        )
+        
+        # Rename the file
+        dir_path = os.path.dirname(als_path)
+        new_path = os.path.join(dir_path, new_filename)
+        
+        if als_path != new_path:
+            try:
+                os.rename(als_path, new_path)
+                project_info['new_filename'] = new_filename
+                project_info['new_path'] = new_path
+                logging.info(f"Renamed file to: {new_filename}")
+            except Exception as e:
+                logging.error(f"Error renaming file {als_path}: {str(e)}")
+                project_info['new_filename'] = project_info['filename']
+                project_info['new_path'] = project_info['path']
+        else:
+            project_info['new_filename'] = project_info['filename']
+            project_info['new_path'] = project_info['path']
         
         logging.info(f"Successfully processed file: {als_path}")
         return project_info
