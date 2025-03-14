@@ -144,6 +144,12 @@ def generate_new_filename(original_name, created_date, tempo, time_signature):
     new_name = "_".join(components) + ".als"
     return sanitize_filename(new_name)
 
+def is_already_renamed(filename):
+    """Check if the file appears to have been previously renamed by this script."""
+    # Check for our naming pattern: something_YYYY-MM-DD_XXXbpm_X-X.als
+    pattern = r'.*_\d{4}-\d{2}-\d{2}_\d+bpm_\d+-\d+\.als$'
+    return bool(re.match(pattern, filename))
+
 def extract_project_info(als_path):
     """Extract information from an Ableton Live project file."""
     logging.info(f"Attempting to process file: {als_path}")
@@ -250,23 +256,29 @@ def extract_project_info(als_path):
             project_info['time_signature']
         )
         
-        # Rename the file
-        dir_path = os.path.dirname(als_path)
-        new_path = os.path.join(dir_path, new_filename)
-        
-        if als_path != new_path:
-            try:
-                os.rename(als_path, new_path)
-                project_info['new_filename'] = new_filename
-                project_info['new_path'] = new_path
-                logging.info(f"Renamed file to: {new_filename}")
-            except Exception as e:
-                logging.error(f"Error renaming file {als_path}: {str(e)}")
-                project_info['new_filename'] = project_info['filename']
-                project_info['new_path'] = project_info['path']
-        else:
+        # Check if file has already been renamed
+        if is_already_renamed(project_info['filename']):
+            logging.info(f"File appears to be already renamed: {als_path}")
             project_info['new_filename'] = project_info['filename']
             project_info['new_path'] = project_info['path']
+        else:
+            # Rename the file
+            dir_path = os.path.dirname(als_path)
+            new_path = os.path.join(dir_path, new_filename)
+            
+            if als_path != new_path:
+                try:
+                    os.rename(als_path, new_path)
+                    project_info['new_filename'] = new_filename
+                    project_info['new_path'] = new_path
+                    logging.info(f"Renamed file to: {new_filename}")
+                except Exception as e:
+                    logging.error(f"Error renaming file {als_path}: {str(e)}")
+                    project_info['new_filename'] = project_info['filename']
+                    project_info['new_path'] = project_info['path']
+            else:
+                project_info['new_filename'] = project_info['filename']
+                project_info['new_path'] = project_info['path']
         
         logging.info(f"Successfully processed file: {als_path}")
         return project_info
