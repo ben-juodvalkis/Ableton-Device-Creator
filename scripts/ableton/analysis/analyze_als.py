@@ -182,65 +182,56 @@ def extract_project_info(als_path):
             for child in tree:
                 logging.debug(f"Child element: {child.tag}")
             
-            # First try to find time signature in RemoteableTimeSignature structure
-            time_sig = tree.find('.//TimeSignature/TimeSignatures/RemoteableTimeSignature')
-            time_sig_source = "RemoteableTimeSignature"
+            # Try all possible time signature locations in order of priority
+            time_sig_locations = [
+                # First check automation (this is the actual time signature)
+                {
+                    'path': './/AutomationEnvelopes/Envelopes/AutomationEnvelope[@Id="0"]/Automation/Events/EnumEvent',
+                    'source': 'automation',
+                    'value_type': 'encoded'
+                },
+                # Then check project settings
+                {
+                    'path': './/TimeSignature/Manual/Value',
+                    'source': 'project_settings',
+                    'value_type': 'encoded'
+                },
+                # Then check RemoteableTimeSignature structure
+                {
+                    'path': './/TimeSignature/TimeSignatures/RemoteableTimeSignature',
+                    'source': 'RemoteableTimeSignature',
+                    'value_type': 'direct'
+                }
+            ]
             
-            if time_sig is not None:
-                numerator = time_sig.find('Numerator')
-                denominator = time_sig.find('Denominator')
-                if numerator is not None and denominator is not None:
-                    time_sig_value = f"{numerator.get('Value')}/{denominator.get('Value')}"
-                    logging.debug(f"Found time signature value: {time_sig_value} (from {time_sig_source})")
-                    project_info['time_signature'] = time_sig_value
-                    logging.debug(f"Decoded time signature: {project_info['time_signature']}")
-            
-            # If not found, try automation (this is the actual time signature)
-            if project_info['time_signature'] is None:
-                automation_path = './/AutomationEnvelopes/Envelopes/AutomationEnvelope[@Id="0"]/Automation/Events/EnumEvent'
-                time_sig = tree.find(automation_path)
-                time_sig_source = "automation"
-                
+            for location in time_sig_locations:
+                time_sig = tree.find(location['path'])
                 if time_sig is not None:
-                    time_sig_value = time_sig.get('Value')
-                    if time_sig_value is None:
-                        time_sig_value = time_sig.text
-                    logging.debug(f"Found time signature value: {time_sig_value} (from {time_sig_source})")
-                    project_info['time_signature'] = decode_time_signature(time_sig_value)
-                    logging.debug(f"Decoded time signature: {project_info['time_signature']}")
-            
-            # If still not found, try project settings
-            if project_info['time_signature'] is None:
-                project_paths = [
-                    './/TimeSignature/EnumEvent',
-                    './/TimeSignature/Value',
-                    './/TimeSignature/Manual/Value',
-                    './/TimeSignature/Manual/EnumEvent',
-                    './/TimeSignature/Manual',
-                    './/TimeSignature',
-                    './/LiveSet/TimeSignature/EnumEvent',
-                    './/LiveSet/TimeSignature/Value',
-                    './/LiveSet/TimeSignature/Manual/Value',
-                    './/LiveSet/TimeSignature/Manual/EnumEvent',
-                    './/LiveSet/TimeSignature/Manual',
-                    './/LiveSet/TimeSignature'
-                ]
-                
-                for path in project_paths:
-                    element = tree.find(path)
-                    if element is not None:
-                        time_sig = element
-                        time_sig_source = "project settings"
-                        logging.debug(f"Found time signature element at path: {path}")
-                        break
-                
-                if time_sig is not None:
-                    time_sig_value = time_sig.get('Value')
-                    if time_sig_value is None:
-                        time_sig_value = time_sig.text
-                    logging.debug(f"Found time signature value: {time_sig_value} (from {time_sig_source})")
-                    project_info['time_signature'] = decode_time_signature(time_sig_value)
-                    logging.debug(f"Decoded time signature: {project_info['time_signature']}")
+                    logging.debug(f"Found time signature at {location['source']}")
+                    
+                    if location['value_type'] == 'direct':
+                        numerator = time_sig.find('Numerator')
+                        denominator = time_sig.find('Denominator')
+                        if numerator is not None and denominator is not None:
+                            num_val = numerator.get('Value')
+                            den_val = denominator.get('Value')
+                            if num_val and den_val:
+                                time_sig_value = f"{num_val}/{den_val}"
+                                # Validate the time signature
+                                if num_val != "1" and den_val != "1":  # Skip likely invalid values
+                                    logging.debug(f"Found valid time signature: {time_sig_value} (from {location['source']})")
+                                    project_info['time_signature'] = time_sig_value
+                                    break
+                    else:  # encoded value
+                        time_sig_value = time_sig.get('Value')
+                        if time_sig_value is None:
+                            time_sig_value = time_sig.text
+                        if time_sig_value:
+                            decoded = decode_time_signature(time_sig_value)
+                            if not decoded.startswith("Unknown"):  # Skip unknown values
+                                logging.debug(f"Found valid time signature: {decoded} (from {location['source']})")
+                                project_info['time_signature'] = decoded
+                                break
             
             logging.debug("Extracting tempo")
             tempo = tree.find('.//Mixer/Tempo/Manual')
