@@ -2,7 +2,7 @@
 ## Technical Documentation
 
 ## Overview
-The Ableton Device File Processor is a Python-based system for creating and modifying Ableton Live drum racks (.adg) and sampler instruments. It provides several specialized scripts for different use cases.
+The Ableton Device File Processor is a Python-based system for creating and modifying Ableton Live drum racks (.adg), sampler instruments, and Simpler devices (.adv). It provides several specialized scripts for different use cases.
 
 ## Features
 
@@ -47,7 +47,16 @@ The Ableton Device File Processor is a Python-based system for creating and modi
   - Supports WAV, AIF, and AIFF files
   - Processes all subfolders recursively
 
-### 4. Macro Control Processing
+### 4. Simpler Device Creation
+- **Single Folder Processing** (`simpler/main_simpler.py`)
+  - Creates individual Simpler devices from audio files
+  - Supports WAV, AIF, and AIFF files
+  - Maintains original sample settings (sample rate, duration)
+  - Creates one Simpler device per sample
+  - Names devices based on sample names
+  - Preserves folder structure in output
+
+### 5. Macro Control Processing
 - **Batch Macro Setting** (`drum_rack/set_macro.py`)
   - Sets macro values across multiple drum racks
   - Processes files recursively in folders
@@ -96,7 +105,17 @@ python3 scripts/sampler/main_sampler.py sampler-rack.adg "/path/to/samples/folde
 python3 scripts/sampler/meta_main_sampler.py sampler-rack.adg "/path/to/sample/library"
 ```
 
-### 4. Macro Control Setting
+### 4. Simpler Device Creation
+
+```bash
+# Create Simpler devices from sample folder
+python3 scripts/device/simpler/main_simpler.py input_simpler.adv "/path/to/samples/folder"
+
+# Create Simpler devices with custom output folder
+python3 scripts/device/simpler/main_simpler.py input_simpler.adv "/path/to/samples/folder" --output-folder "/path/to/output"
+```
+
+### 5. Macro Control Setting
 
 ```bash
 # Set macro value in all racks in a folder
@@ -104,6 +123,14 @@ python3 scripts/drum_rack/set_macro.py "/path/to/racks/folder" [macro_number] [v
 ```
 
 ## Output Structure
+
+### For Simpler Devices
+```
+output-simpler/
+├── Sample1.adv
+├── Sample2.adv
+└── ...
+```
 
 ### For Sampler Instruments
 ```
@@ -135,6 +162,7 @@ Output/
 - **main_percussion.py**: Single expansion percussion processor
 - **main_generic.py**: Single folder processor
 - **main_sampler.py**: Sampler instrument creator
+- **main_simpler.py**: Simpler device creator
 - **meta_main.py**: Multi-expansion processor
 - **meta_main_percussion.py**: Multi-expansion percussion processor
 - **meta_main_folders.py**: Recursive folder processor
@@ -142,12 +170,23 @@ Output/
 - **set_macro.py**: Macro value processor
 
 ### Support Scripts
-- **utils/decoder.py**: ADG file decoder
-- **utils/encoder.py**: ADG file encoder
+- **utils/decoder.py**: ADG/ADV file decoder
+- **utils/encoder.py**: ADG/ADV file encoder
 - **drum_rack/transformer.py**: Drum rack XML transformer
 - **sampler/transformer.py**: Sampler XML transformer
+- **simpler/transformer.py**: Simpler XML transformer
 
 ## Features by Script
+
+### main_simpler.py
+- Creates individual Simpler devices from audio files
+- Supports multiple audio formats (WAV, AIF, AIFF)
+- Validates audio files before processing
+- Maintains original sample settings
+- Creates one device per sample
+- Names devices based on sample names
+- Reports processing status
+- Handles errors gracefully
 
 ### main_sampler.py
 - Creates sampler instruments from audio folders
