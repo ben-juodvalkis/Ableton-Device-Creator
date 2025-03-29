@@ -55,6 +55,9 @@ The Ableton Device File Processor is a Python-based system for creating and modi
   - Creates one Simpler device per sample
   - Names devices based on sample names
   - Preserves folder structure in output
+  - Uses absolute paths for reliable sample loading
+  - Handles special characters in filenames
+  - Preserves all Simpler device settings from template
 
 ### 5. Macro Control Processing
 - **Batch Macro Setting** (`drum_rack/set_macro.py`)
@@ -187,6 +190,11 @@ Output/
 - Names devices based on sample names
 - Reports processing status
 - Handles errors gracefully
+- Uses absolute paths for reliable sample loading
+- Preserves all Simpler device settings from template
+- Handles special characters in filenames
+- Maintains sample rate and duration information
+- Supports both relative and absolute path modes
 
 ### main_sampler.py
 - Creates sampler instruments from audio folders
