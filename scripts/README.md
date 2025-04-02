@@ -27,15 +27,42 @@ scripts/
 │   └── main_percussion.py
 │
 └── utils/              # Shared utility scripts
-    ├── encoder.py      # ADG encoding utilities
-    ├── decoder.py      # ADG decoding utilities
+    ├── encoder.py      # Compresses XML to gzipped ADG format
+    ├── decoder.py      # Extracts XML from gzipped ADG files
     ├── transformer.py  # XML transformation utilities
-    └── set_macro.py    # Macro manipulation utilities
+    ├── set_macro.py    # Macro manipulation utilities
+    └── scroll_position.py  # Modifies drum rack pad scroll position
 ```
 
-## Usage
+## Core Utilities
 
-Each script can be run independently. For example:
+### ADG File Handling
+Ableton Device Group (ADG) files are gzipped XML files. We provide two core utilities to work with them:
+
+- **decoder.py**: Extracts the XML content from ADG files
+  ```python
+  from decoder import decode_adg
+  xml_content = decode_adg(Path("device.adg"))  # Returns XML string
+  ```
+
+- **encoder.py**: Creates ADG files from XML content
+  ```python
+  from encoder import encode_adg
+  encode_adg(xml_content, Path("output.adg"))  # Saves gzipped ADG file
+  ```
+
+### Drum Rack Utilities
+
+- **scroll_position.py**: Modifies which pads are visible in a drum rack
+  ```bash
+  # Show pads 1-8 (scroll position 0)
+  python3 utils/scroll_position.py input_rack.adg --scroll 0
+  
+  # Show pads 9-16 (scroll position 8)
+  python3 utils/scroll_position.py input_rack.adg --scroll 8 --output custom_name.adg
+  ```
+
+## Usage Examples
 
 ```bash
 # Analyze Ableton projects
@@ -49,6 +76,9 @@ python3 device/drum_rack/main.py /path/to/samples
 
 # Process multiple libraries
 python3 meta/main.py /path/to/template.adg /path/to/expansions
+
+# Modify drum rack view
+python3 utils/scroll_position.py input_rack.adg --scroll 16
 ```
 
 ## Dependencies
@@ -58,6 +88,7 @@ All scripts require Python 3.x and the following packages:
 - pathlib (built-in)
 - typing (built-in)
 - wave (built-in)
+- gzip (built-in)
 
 ## Notes
 
@@ -66,4 +97,32 @@ All scripts require Python 3.x and the following packages:
 - Analysis scripts in `ableton/analysis/` work directly with Ableton Live project files
 - Meta scripts in `meta/` handle configuration and setup tasks
 - The core drum rack creation script is in `device/drum_rack/main.py`
-- The meta script in `meta/main.py` processes multiple libraries using the core script 
+- The meta script in `meta/main.py` processes multiple libraries using the core script
+
+## Working with ADG Files
+
+ADG files are Ableton Device Group files that store device presets. They are gzipped XML files, which means:
+1. They cannot be edited directly as text
+2. They must be decoded before modification
+3. They must be encoded after modification
+
+The typical workflow for modifying an ADG file is:
+1. Use `decoder.py` to extract the XML content
+2. Modify the XML content using Python's XML tools
+3. Use `encoder.py` to save the modified content as a new ADG file
+
+Example:
+```python
+from pathlib import Path
+from decoder import decode_adg
+from encoder import encode_adg
+
+# Extract XML
+xml_content = decode_adg(Path("input.adg"))
+
+# Modify XML content
+# ... your modifications here ...
+
+# Save as new ADG
+encode_adg(modified_xml, Path("output.adg"))
+``` 
