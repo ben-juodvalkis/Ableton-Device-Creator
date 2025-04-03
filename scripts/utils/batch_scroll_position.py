@@ -9,7 +9,7 @@ import os
 sys.path.append(os.path.dirname(__file__))
 from decoder import decode_adg
 from encoder import encode_adg
-from pitch_shifter import shift_drum_rack_pitch
+from scroll_position import transform_scroll_position
 
 def find_adg_files(folder_path: Path) -> List[Path]:
     """
@@ -30,13 +30,13 @@ def find_adg_files(folder_path: Path) -> List[Path]:
     
     return sorted(adg_files)
 
-def process_adg_file(file_path: Path, semitones: int) -> bool:
+def process_adg_file(file_path: Path, scroll_position: int) -> bool:
     """
-    Process a single ADG file by shifting its MIDI notes
+    Process a single ADG file by modifying its scroll position
     
     Args:
         file_path (Path): Path to the ADG file
-        semitones (int): Number of semitones to shift
+        scroll_position (int): New scroll position value
         
     Returns:
         bool: True if successful, False otherwise
@@ -47,8 +47,8 @@ def process_adg_file(file_path: Path, semitones: int) -> bool:
         # Read and decode the ADG file
         xml_content = decode_adg(file_path)
         
-        # Shift the pitch
-        modified_xml = shift_drum_rack_pitch(xml_content, semitones)
+        # Transform the content
+        modified_xml = transform_scroll_position(xml_content, scroll_position)
         
         # Save directly back to the original file
         encode_adg(modified_xml, file_path)
@@ -63,8 +63,8 @@ def process_adg_file(file_path: Path, semitones: int) -> bool:
 def main():
     parser = argparse.ArgumentParser(description='Recursively process all ADG files in a folder')
     parser.add_argument('folder', type=str, help='Folder to search for ADG files')
-    parser.add_argument('--semitones', type=int, default=16,
-                       help='Number of semitones to shift (default: 16)')
+    parser.add_argument('--scroll', type=int, default=0,
+                       help='Scroll position value (0-31, default: 0)')
     
     try:
         args = parser.parse_args()
@@ -72,6 +72,9 @@ def main():
         
         if not folder_path.exists():
             raise FileNotFoundError(f"Folder not found: {folder_path}")
+            
+        if not 0 <= args.scroll <= 31:
+            raise ValueError("Scroll position must be between 0 and 31")
         
         # Find all ADG files
         adg_files = find_adg_files(folder_path)
@@ -81,12 +84,12 @@ def main():
             return 1
         
         print(f"Found {len(adg_files)} ADG files to process")
-        print(f"Shifting notes by {args.semitones} semitones")
+        print(f"Setting scroll position to: {args.scroll}")
         
         # Process each file
         success_count = 0
         for file_path in adg_files:
-            if process_adg_file(file_path, args.semitones):
+            if process_adg_file(file_path, args.scroll):
                 success_count += 1
         
         print(f"\nProcessing complete!")

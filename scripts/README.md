@@ -37,9 +37,11 @@ scripts/
 ## Core Utilities
 
 ### ADG File Handling
+
 Ableton Device Group (ADG) files are gzipped XML files. We provide two core utilities to work with them:
 
 - **decoder.py**: Extracts the XML content from ADG files
+
   ```python
   from decoder import decode_adg
   xml_content = decode_adg(Path("device.adg"))  # Returns XML string
@@ -54,10 +56,11 @@ Ableton Device Group (ADG) files are gzipped XML files. We provide two core util
 ### Drum Rack Utilities
 
 - **scroll_position.py**: Modifies which pads are visible in a drum rack
+
   ```bash
   # Show pads 1-8 (scroll position 0)
   python3 utils/scroll_position.py input_rack.adg --scroll 0
-  
+
   # Show pads 9-16 (scroll position 8)
   python3 utils/scroll_position.py input_rack.adg --scroll 8 --output custom_name.adg
   ```
@@ -84,6 +87,7 @@ python3 utils/scroll_position.py input_rack.adg --scroll 16
 ## Dependencies
 
 All scripts require Python 3.x and the following packages:
+
 - xml.etree.ElementTree (built-in)
 - pathlib (built-in)
 - typing (built-in)
@@ -102,16 +106,19 @@ All scripts require Python 3.x and the following packages:
 ## Working with ADG Files
 
 ADG files are Ableton Device Group files that store device presets. They are gzipped XML files, which means:
+
 1. They cannot be edited directly as text
 2. They must be decoded before modification
 3. They must be encoded after modification
 
 The typical workflow for modifying an ADG file is:
+
 1. Use `decoder.py` to extract the XML content
 2. Modify the XML content using Python's XML tools
 3. Use `encoder.py` to save the modified content as a new ADG file
 
 Example:
+
 ```python
 from pathlib import Path
 from decoder import decode_adg
@@ -125,4 +132,4 @@ xml_content = decode_adg(Path("input.adg"))
 
 # Save as new ADG
 encode_adg(modified_xml, Path("output.adg"))
-``` 
+```
