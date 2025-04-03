@@ -1,4 +1,8 @@
 {
+  "name": "ableton-device-creator",
+  "version": "1.0.0",
+  "description": "Ableton Device Creator for Max/MSP",
+  "main": "scripts/max/simpler_creator.js",
   "dependencies": {
     "fast-xml-parser": "^5.0.8"
   }

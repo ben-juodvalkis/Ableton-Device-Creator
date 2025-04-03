@@ -17,37 +17,138 @@ def transform_simpler_xml(xml_content: str, sample_path: str) -> str:
         # Parse the XML
         root = ET.fromstring(xml_content)
         
-        # Find the MultiSamplePart element
-        sample_part = root.find(".//MultiSamplePart")
-        if sample_part is None:
-            raise ValueError("Could not find MultiSamplePart element")
+        # Find the MultiSampleMap element
+        multi_sample_map = root.find(".//MultiSampleMap")
+        if multi_sample_map is None:
+            raise ValueError("Could not find MultiSampleMap element")
             
-        # Find the sample reference
-        sample_ref = sample_part.find(".//SampleRef/FileRef")
-        if sample_ref is None:
-            raise ValueError("Could not find SampleRef/FileRef element")
+        # Clear existing SampleParts
+        sample_parts = multi_sample_map.find("SampleParts")
+        if sample_parts is not None:
+            sample_parts.clear()
             
+        # Create new MultiSamplePart with required attributes
+        multi_sample_part = ET.SubElement(sample_parts, "MultiSamplePart")
+        multi_sample_part.set('Id', '0')
+        multi_sample_part.set('InitUpdateAreSlicesFromOnsetsEditableAfterRead', 'false')
+        multi_sample_part.set('HasImportedSlicePoints', 'true')
+        multi_sample_part.set('NeedsAnalysisData', 'true')
+        
+        # Add required MultiSamplePart elements
+        lom_id = ET.SubElement(multi_sample_part, "LomId")
+        lom_id.set('Value', '0')
+        
+        name = ET.SubElement(multi_sample_part, "Name")
+        name.set('Value', Path(sample_path).stem)
+        
+        selection = ET.SubElement(multi_sample_part, "Selection")
+        selection.set('Value', 'true')
+        
+        is_active = ET.SubElement(multi_sample_part, "IsActive")
+        is_active.set('Value', 'true')
+        
+        solo = ET.SubElement(multi_sample_part, "Solo")
+        solo.set('Value', 'false')
+        
+        # Add key range
+        key_range = ET.SubElement(multi_sample_part, "KeyRange")
+        for elem in ['Min', 'Max', 'CrossfadeMin', 'CrossfadeMax']:
+            e = ET.SubElement(key_range, elem)
+            e.set('Value', '0' if elem in ['Min', 'CrossfadeMin'] else '127')
+            
+        # Add velocity range
+        velocity_range = ET.SubElement(multi_sample_part, "VelocityRange")
+        for elem in ['Min', 'Max', 'CrossfadeMin', 'CrossfadeMax']:
+            e = ET.SubElement(velocity_range, elem)
+            e.set('Value', '1' if elem in ['Min', 'CrossfadeMin'] else '127')
+            
+        # Add selector range
+        selector_range = ET.SubElement(multi_sample_part, "SelectorRange")
+        for elem in ['Min', 'Max', 'CrossfadeMin', 'CrossfadeMax']:
+            e = ET.SubElement(selector_range, elem)
+            e.set('Value', '0' if elem in ['Min', 'CrossfadeMin'] else '127')
+            
+        # Add other required elements
+        root_key = ET.SubElement(multi_sample_part, "RootKey")
+        root_key.set('Value', '60')
+        
+        detune = ET.SubElement(multi_sample_part, "Detune")
+        detune.set('Value', '0')
+        
+        tune_scale = ET.SubElement(multi_sample_part, "TuneScale")
+        tune_scale.set('Value', '100')
+        
+        panorama = ET.SubElement(multi_sample_part, "Panorama")
+        panorama.set('Value', '0')
+        
+        volume = ET.SubElement(multi_sample_part, "Volume")
+        volume.set('Value', '1')
+        
+        link = ET.SubElement(multi_sample_part, "Link")
+        link.set('Value', 'false')
+        
+        # Create SampleRef with all required elements
+        sample_ref = ET.SubElement(multi_sample_part, "SampleRef")
+        
+        # Create FileRef with all required elements
+        file_ref = ET.SubElement(sample_ref, "FileRef")
+        
         # Convert to absolute path
         abs_path = str(Path(sample_path).resolve())
         
-        # Update the absolute path
-        path_elem = sample_ref.find("Path")
-        if path_elem is not None:
-            path_elem.set('Value', abs_path)
-            
-        # Update the relative path
-        rel_path_elem = sample_ref.find("RelativePath")
-        if rel_path_elem is not None:
-            # For now, just use the filename as the relative path
-            # This ensures Ableton can find it via absolute path
-            rel_path = "Samples/" + Path(sample_path).name
-            rel_path_elem.set('Value', rel_path)
-            
-        # Update RelativePathType to use absolute path (Value="0")
-        path_type_elem = sample_ref.find("RelativePathType")
-        if path_type_elem is not None:
-            path_type_elem.set('Value', "0")
-            
+        # Add Path element
+        path_elem = ET.SubElement(file_ref, "Path")
+        path_elem.set('Value', abs_path)
+        
+        # Add RelativePath element
+        rel_path_elem = ET.SubElement(file_ref, "RelativePath")
+        rel_path = "Samples/" + Path(sample_path).name
+        rel_path_elem.set('Value', rel_path)
+        
+        # Add RelativePathType element
+        path_type_elem = ET.SubElement(file_ref, "RelativePathType")
+        path_type_elem.set('Value', "0")  # Use absolute path
+        
+        # Add Type element
+        type_elem = ET.SubElement(file_ref, "Type")
+        type_elem.set('Value', "1")  # Sample file
+        
+        # Add LivePackName and LivePackId
+        live_pack_name = ET.SubElement(file_ref, "LivePackName")
+        live_pack_name.set('Value', '')
+        
+        live_pack_id = ET.SubElement(file_ref, "LivePackId")
+        live_pack_id.set('Value', '')
+        
+        # Add OriginalFileSize and OriginalCrc
+        original_file_size = ET.SubElement(file_ref, "OriginalFileSize")
+        original_file_size.set('Value', '0')
+        
+        original_crc = ET.SubElement(file_ref, "OriginalCrc")
+        original_crc.set('Value', '0')
+        
+        # Add LastModDate
+        last_mod_date = ET.SubElement(sample_ref, "LastModDate")
+        last_mod_date.set('Value', '0')
+        
+        # Add SourceContext
+        source_context = ET.SubElement(sample_ref, "SourceContext")
+        
+        # Add SampleUsageHint
+        sample_usage_hint = ET.SubElement(sample_ref, "SampleUsageHint")
+        sample_usage_hint.set('Value', '0')
+        
+        # Add DefaultDuration and DefaultSampleRate
+        default_duration = ET.SubElement(sample_ref, "DefaultDuration")
+        default_duration.set('Value', '0')
+        
+        default_sample_rate = ET.SubElement(sample_ref, "DefaultSampleRate")
+        default_sample_rate.set('Value', '48000')
+        
+        # Add SamplesToAutoWarp
+        samples_to_auto_warp = ET.SubElement(sample_ref, "SamplesToAutoWarp")
+        samples_to_auto_warp.set('Value', '1')
+        
         print(f"Updated sample path to: {abs_path}")
         print(f"Set relative path to: {rel_path}")
         
