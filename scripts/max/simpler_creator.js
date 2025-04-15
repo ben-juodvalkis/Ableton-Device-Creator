@@ -69,6 +69,9 @@ async function createSimplerDevice(samplePath, outputPath) {
     maxApi.post("Successfully wrote output file: " + outputPath);
 
     maxApi.post("Simpler device created successfully");
+
+    // Send a bang out of the node.script object
+    maxApi.outlet("done");
   } catch (error) {
     maxApi.post("Error: " + error.message);
     if (error.stack) {

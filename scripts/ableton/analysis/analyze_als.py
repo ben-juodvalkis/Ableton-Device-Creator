@@ -1,72 +1,3 @@
-"""
-# Ableton Project Analyzer
-
-This script analyzes Ableton Live project files (.als) and generates a CSV report containing
-project metadata and musical information. It also renames the files to include creation date,
-tempo, and time signature.
-
-## Features
-- Recursively scans directories for .als files
-- Extracts musical information (tempo, time signature)
-- Includes file metadata (creation date, size, etc.)
-- Renames files with format: original_name [YYYY-MM-DD][BPM][TIME_SIG].als
-- Outputs results to a CSV file in the input directory
-- Detailed logging to Desktop for troubleshooting
-
-## Installation
-
-1. Save this script to:
-   `/Users/Shared/DevWork/GitHub/Ableton Device Creator/scripts/ableton/analysis/analyze_als.py`
-
-2. Make the script executable:
-   ```bash
-   chmod +x /Users/Shared/DevWork/GitHub/Ableton Device Creator/scripts/ableton/analysis/analyze_als.py
-   ```
-
-3. Set up the macOS Quick Action:
-   a. Open Automator
-   b. Create New > Quick Action
-   c. Configure workflow settings:
-      - Workflow receives: folders
-      - in: Finder
-   d. Add "Run Shell Script" action
-   e. Configure shell script:
-      - Shell: /bin/bash
-      - Pass input: as arguments
-      - Script content:
-        ```bash
-        /usr/bin/python3 /Users/Shared/DevWork/GitHub/Ableton Device Creator/scripts/ableton/analysis/analyze_als.py "$1"
-        ```
-   f. Save as "Analyze Ableton Projects"
-
-## Usage
-
-1. Right-click any folder containing Ableton projects
-2. Select Quick Actions > Analyze Ableton Projects
-3. Find the generated CSV file in the selected folder
-4. Check ~/Desktop/ableton_analysis.log for detailed logs
-
-## Output Format
-
-The CSV includes the following columns:
-- filename: Name of the .als file
-- path: Full path to the file
-- file_size_mb: Size of the file in MB
-- file_created: Creation timestamp
-- file_modified: Last modified timestamp
-- file_last_accessed: Last accessed timestamp
-- time_signature: Musical time signature (e.g., "4/4")
-- tempo: Project tempo in BPM
-
-## Troubleshooting
-
-If the script isn't working:
-1. Check the log file at ~/Desktop/ableton_analysis.log
-2. Verify Python 3 is installed
-3. Ensure the script has execution permissions
-4. Check folder permissions
-"""
-
 import os
 import csv
 import gzip
@@ -77,17 +8,26 @@ import logging
 from datetime import datetime
 import re
 
-# Set up logging
-log_dir = os.path.expanduser("~/Desktop")
-log_file = os.path.join(log_dir, "ableton_analysis.log")
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
+# Set up improved logging with error handling
+try:
+    # Set up initial handlers list with stdout always included
+    handlers = [logging.StreamHandler(sys.stdout)]
+    
+    # We'll determine where to write the log file after we know the target directory
+    # For now, configure logging with just console output
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=handlers
+    )
+except Exception as e:
+    # Fallback to basic console-only logging if even that fails
+    print(f"Could not set up basic logging: {str(e)}")
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+    )
+    logging.warning("Using default logging configuration.")
 
 def decode_time_signature(value):
     """
@@ -280,6 +220,18 @@ def extract_project_info(als_path):
 
 def analyze_projects(root_dir):
     """Recursively analyze all .als files in the directory."""
+    # Set up log file in the target directory
+    log_file = os.path.join(root_dir, "ableton_analysis.log")
+    try:
+        # Add a file handler for the target directory
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logging.getLogger().addHandler(file_handler)
+        print(f"Logging to: {log_file}")
+    except (PermissionError, OSError) as e:
+        logging.warning(f"Could not write log file to target directory: {str(e)}")
+        logging.warning("Continuing with console logging only")
+    
     logging.info(f"Starting analysis of directory: {root_dir}")
     logging.info(f"Directory exists: {os.path.exists(root_dir)}")
     logging.info(f"Directory is readable: {os.access(root_dir, os.R_OK)}")
