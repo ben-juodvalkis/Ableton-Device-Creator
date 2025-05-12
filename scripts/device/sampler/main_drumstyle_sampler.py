@@ -87,11 +87,11 @@ def transform_sampler_xml(xml_content: str, samples: List[str]) -> str:
         if sample_parts is not None:
             sample_map.remove(sample_parts)
         new_parts = ET.SubElement(sample_map, "SampleParts")
-        # Map to MIDI notes 36-67 (C2-G#3)
+        # Map to MIDI notes 48-79 (C3-G#4)
         for i, sample_path in enumerate(samples):
             if not sample_path:
                 continue
-            key = 36 + i
+            key = 48 + i
             part = create_sample_part(i, sample_path, key, key)
             new_parts.append(part)
         return ET.tostring(root, encoding='unicode', xml_declaration=True)
