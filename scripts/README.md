@@ -65,6 +65,29 @@ Ableton Device Group (ADG) files are gzipped XML files. We provide two core util
   python3 utils/scroll_position.py input_rack.adg --scroll 8 --output custom_name.adg
   ```
 
+### Sampler Device Scripts
+
+- **main_sampler.py**: Creates a Sampler device from all samples in a folder (maps all samples across the key range).
+- **main_drumstyle_sampler.py**: Creates a Sampler device with 32 samples per batch, grouped as 8 Kick, 8 Snare/Clap, 8 Hihat/Shaker, 8 Percussion/Other, mapped to consecutive notes (default: C3–G#4). Naming uses the library and first kick descriptor.
+- **main_percussion_sampler.py**: Creates percussion-only Sampler devices, each with 32 percussion/other samples per batch, mapped to C3–G#4. Naming uses the library and first sample descriptor.
+- **main_phrases_sampler.py**: For phrase/loop libraries, iterates through each subfolder and creates Sampler devices (batches of 32 samples) for each, named after the subfolder (with batch number if needed).
+
+#### Usage Examples
+
+```bash
+# Drum-style sampler (4x8 groups)
+python3 scripts/device/sampler/main_drumstyle_sampler.py Donor\ Sampler\ Rack.adg /path/to/library --output-folder /path/to/output
+
+# Percussion-only sampler
+python3 scripts/device/sampler/main_percussion_sampler.py Donor\ Sampler\ Rack.adg /path/to/library --output-folder /path/to/output
+
+# Phrases/loops: one device per subfolder
+python3 scripts/device/sampler/main_phrases_sampler.py Donor\ Sampler\ Rack.adg /path/to/parent_folder --output-folder /path/to/output
+```
+
+- All scripts support batch processing over multiple libraries with a shell loop.
+- Output files are named for the library/subfolder and (if needed) batch number or descriptor.
+
 ## Usage Examples
 
 ```bash
