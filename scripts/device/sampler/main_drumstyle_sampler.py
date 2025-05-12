@@ -70,7 +70,7 @@ def organize_sampler_samples(donor_path: Path, batch_index: int) -> Tuple[List[s
     hihat_shaker_samples = get_sample_batch(hihat_shaker_all, batch_index)
     snare_clap_samples = get_sample_batch(snare_clap_all, batch_index)
     kick_samples = get_sample_batch(kick_all, batch_index)
-    all_samples = remaining_samples + hihat_shaker_samples + snare_clap_samples + kick_samples
+    all_samples = kick_samples + snare_clap_samples + hihat_shaker_samples + remaining_samples
     while len(all_samples) < 32:
         all_samples.append(None)
     has_more = batch_index + 1 < max_complete_sets
