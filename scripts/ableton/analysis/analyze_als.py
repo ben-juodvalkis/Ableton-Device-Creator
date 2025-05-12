@@ -29,6 +29,30 @@ except Exception as e:
     )
     logging.warning("Using default logging configuration.")
 
+def find_master_resample_clips(tree):
+    """Find all audio clip filenames in tracks named 'Master Resample'."""
+    clip_filenames = []
+    
+    # Search for tracks
+    for track in tree.findall(".//AudioTrack"):
+        # Check if track name is "Master Resample"
+        name = track.find(".//Name/EffectiveName")
+        if name is not None and name.get("Value") == "Master Resample":
+            logging.debug("Found Master Resample track")
+            
+            # Search for clips in arrangement view
+            for clip in track.findall(".//AudioClip"):
+                file_ref = clip.find(".//SampleRef/FileRef")
+                if file_ref is not None:
+                    path = file_ref.find("Path")
+                    if path is not None:
+                        # Extract just the filename from the full path
+                        filename = os.path.basename(path.get("Value"))
+                        clip_filenames.append(filename)
+                        logging.debug(f"Found clip: {filename}")
+    
+    return clip_filenames
+
 def decode_time_signature(value):
     """
     Decode Ableton's numeric time signature value.
@@ -106,6 +130,7 @@ def extract_project_info(als_path):
             'file_created': datetime.fromtimestamp(file_stats.st_birthtime).strftime('%Y-%m-%d %H:%M:%S'),
             'file_modified': datetime.fromtimestamp(file_stats.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
             'file_last_accessed': datetime.fromtimestamp(file_stats.st_atime).strftime('%Y-%m-%d %H:%M:%S'),
+            'master_resample_clips': []  # New field for Master Resample clip paths
         }
         
         # Read the .als file as gzip
@@ -121,6 +146,11 @@ def extract_project_info(als_path):
             logging.debug(f"Root element: {tree.tag}")
             for child in tree:
                 logging.debug(f"Child element: {child.tag}")
+            
+            # Find Master Resample clips
+            master_resample_clips = find_master_resample_clips(tree)
+            project_info['master_resample_clips'] = master_resample_clips
+            logging.debug(f"Found {len(master_resample_clips)} Master Resample clips")
             
             # Try all possible time signature locations in order of priority
             time_sig_locations = [
