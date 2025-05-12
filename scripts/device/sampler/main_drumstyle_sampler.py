@@ -74,7 +74,18 @@ def organize_sampler_samples(donor_path: Path, batch_index: int) -> Tuple[List[s
     while len(all_samples) < 32:
         all_samples.append(None)
     has_more = batch_index + 1 < max_complete_sets
-    rack_name = f"{library_name} {batch_index + 1:02d} Sampler"
+    # Get descriptor from first kick sample
+    kick_descriptor = ""
+    if kick_samples:
+        first_kick = Path(kick_samples[0]).stem
+        parts = first_kick.split(' ', 1)
+        if len(parts) > 1:
+            kick_descriptor = parts[1]
+    # Build rack name
+    if kick_descriptor:
+        rack_name = f"{library_name} {kick_descriptor}"
+    else:
+        rack_name = library_name
     return all_samples[:32], rack_name, has_more
 
 def transform_sampler_xml(xml_content: str, samples: List[str]) -> str:
