@@ -91,7 +91,7 @@ def main():
             # Create command
             cmd = [
                 sys.executable,
-                'scripts/device-creation/python/device/generic/main_generic.py',
+                'drum-racks/creation/main_simple_folder.py',
                 str(input_path),
                 str(folder),
                 '--output-folder',

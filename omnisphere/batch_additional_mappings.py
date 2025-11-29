@@ -1,0 +1,319 @@
+#!/usr/bin/env python3
+"""
+Omnisphere Additional Automation Mappings
+
+Adds extra automation mappings (portV2, freq, res, timbre) to aupreset files
+that already have basic mappings. Use this to expand automation control.
+"""
+
+import base64
+import xml.etree.ElementTree as ET
+import re
+import argparse
+from pathlib import Path
+import logging
+from datetime import datetime
+
+class AdditionalMappingsMapper:
+    """Adds additional automation mappings to aupreset files"""
+
+    def __init__(self):
+        # Additional automation mappings to inject
+        self.automation_config = {
+            'portV2': [
+                {'device': 16, 'id': 8, 'channel': -1, 'instance': 1}
+            ],
+            'freq': [
+                {'device': 16, 'id': 9, 'channel': -1, 'instance': 1}
+            ],
+            'res': [
+                {'device': 16, 'id': 10, 'channel': -1, 'instance': 1}
+            ],
+            'timbre': [
+                {'device': 16, 'id': 7, 'channel': -1, 'instance': 1}
+            ]
+        }
+        self.setup_logging()
+
+    def setup_logging(self):
+        """Setup logging to both console and desktop log file"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_filename = f"additional_mappings_{timestamp}.log"
+        self.log_file_path = Path.home() / "Desktop" / log_filename
+
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(message)s',
+            handlers=[
+                logging.FileHandler(self.log_file_path, encoding='utf-8'),
+                logging.StreamHandler()
+            ]
+        )
+        self.logger = logging.getLogger(__name__)
+
+    def log(self, message):
+        """Log message to both console and file"""
+        self.logger.info(message)
+
+    def extract_preset_data(self, aupreset_path):
+        """Extract and decode the preset data from aupreset file"""
+        try:
+            tree = ET.parse(aupreset_path)
+            root = tree.getroot()
+
+            dict_elem = root.find('dict')
+            if dict_elem is None:
+                raise ValueError("No dict element found in aupreset")
+
+            data0_found = False
+
+            for child in dict_elem:
+                if child.tag == 'key' and child.text == 'data0':
+                    data0_found = True
+                elif data0_found and child.tag == 'data':
+                    encoded_data = child.text.strip() if child.text else ""
+                    if not encoded_data:
+                        raise ValueError("Empty data0 element")
+                    decoded_data = base64.b64decode(encoded_data).decode('utf-8', errors='ignore')
+                    return decoded_data
+
+            raise ValueError("No data0 element found in aupreset")
+
+        except Exception as e:
+            raise Exception(f"Error extracting preset data: {e}")
+
+    def inject_mappings(self, preset_xml_data):
+        """Inject additional automation mappings into the preset XML data"""
+        modified_data = preset_xml_data
+        total_mappings = 0
+
+        self.log(f"🎛️  Applying additional automation mappings...")
+
+        for param_name, mappings in self.automation_config.items():
+            self.log(f"\n🔍 Processing parameter '{param_name}':")
+
+            # Find all occurrences of this parameter
+            pattern = f'{param_name}="[^"]*"'
+            matches = list(re.finditer(pattern, modified_data))
+
+            if not matches:
+                self.log(f"  ⚠️  No occurrences found for '{param_name}'")
+                continue
+
+            self.log(f"  📊 Found {len(matches)} total occurrences")
+
+            # Apply mappings to specific instances only
+            mappings_applied = 0
+            offset = 0  # Track text length changes
+
+            for mapping in mappings:
+                instance = mapping['instance']
+                device = mapping['device']
+                param_id = mapping['id']
+                channel = mapping['channel']
+
+                if instance <= len(matches):
+                    # Get the match for this instance (1-based indexing)
+                    match = matches[instance - 1]
+
+                    # Calculate position with offset from previous injections
+                    match_start = match.start() + offset
+                    match_end = match.end() + offset
+
+                    # Check if mapping already exists
+                    check_start = max(0, match_end)
+                    check_end = min(len(modified_data), match_end + 200)
+                    check_region = modified_data[check_start:check_end]
+
+                    if f'{param_name}MidiLearnDevice' in check_region:
+                        self.log(f"  ℹ️  Instance {instance}: Mapping already exists, skipping")
+                        continue
+
+                    # Create the automation mapping injection
+                    automation_injection = (
+                        f' {param_name}MidiLearnDevice0="{device}" '
+                        f'{param_name}MidiLearnIDnum0="{param_id}" '
+                        f'{param_name}MidiLearnChannel0="{channel}"'
+                    )
+
+                    # Insert automation mapping right after the parameter
+                    modified_data = (
+                        modified_data[:match_end] +
+                        automation_injection +
+                        modified_data[match_end:]
+                    )
+
+                    # Update offset for next injection
+                    offset += len(automation_injection)
+                    mappings_applied += 1
+                    total_mappings += 1
+
+                    self.log(f"  ✅ Instance {instance}: Mapped to Device {device}, ID {param_id}")
+
+                else:
+                    self.log(f"  ⚠️  Instance {instance}: Not found (only {len(matches)} occurrences exist)")
+
+            self.log(f"  📈 Applied {mappings_applied}/{len(mappings)} mappings for '{param_name}'")
+
+        self.log(f"\n🎛️  Total new automation mappings applied: {total_mappings}")
+        return modified_data, total_mappings
+
+    def save_mapped_preset(self, original_path, modified_xml_data, replace_original=False):
+        """Save the modified preset data back to an aupreset file"""
+
+        tree = ET.parse(original_path)
+        root = tree.getroot()
+
+        # Find and update the data0 element
+        dict_elem = root.find('dict')
+        data0_found = False
+
+        for child in dict_elem:
+            if child.tag == 'key' and child.text == 'data0':
+                data0_found = True
+            elif data0_found and child.tag == 'data':
+                encoded_data = base64.b64encode(modified_xml_data.encode('utf-8')).decode('ascii')
+                child.text = encoded_data
+                break
+
+        if replace_original:
+            output_path = original_path
+        else:
+            original_path_obj = Path(original_path)
+            output_path = original_path_obj.parent / f"{original_path_obj.stem} extended{original_path_obj.suffix}"
+
+        tree.write(output_path, encoding='utf-8', xml_declaration=True)
+
+        if replace_original:
+            self.log(f"💾 Updated original: {output_path}")
+        else:
+            self.log(f"💾 Saved extended preset: {output_path}")
+
+        return output_path
+
+    def map_preset(self, input_path, replace_original=False):
+        """Main method to add additional automation mappings to a preset"""
+
+        self.log(f"🔄 Processing: {input_path}")
+
+        try:
+            preset_xml_data = self.extract_preset_data(input_path)
+            self.log(f"📊 Extracted {len(preset_xml_data):,} characters")
+        except Exception as e:
+            self.log(f"❌ Failed to extract: {e}")
+            return None
+
+        try:
+            modified_xml_data, mappings_added = self.inject_mappings(preset_xml_data)
+
+            if mappings_added == 0:
+                self.log(f"⚠️  No new mappings added (may already exist)")
+                return None
+
+            size_diff = len(modified_xml_data) - len(preset_xml_data)
+            self.log(f"📈 Added {size_diff} characters of automation data")
+
+        except Exception as e:
+            self.log(f"❌ Failed to inject mappings: {e}")
+            return None
+
+        try:
+            output_file = self.save_mapped_preset(input_path, modified_xml_data, replace_original)
+            return output_file
+        except Exception as e:
+            self.log(f"❌ Failed to save: {e}")
+            return None
+
+    def batch_map_presets(self, input_dir, pattern="*.aupreset", replace_originals=False):
+        """Batch process multiple aupreset files"""
+
+        input_path = Path(input_dir)
+        if not input_path.exists():
+            self.log(f"❌ Input directory not found: {input_dir}")
+            return []
+
+        aupreset_files = list(input_path.rglob(pattern))
+        self.log(f"🔍 Found {len(aupreset_files)} aupreset files")
+        self.log(f"🎯 Adding 4 automation mappings: portV2, freq, res, timbre")
+        self.log(f"📂 Input directory: {input_path}")
+        if replace_originals:
+            self.log(f"🔄 Mode: Replacing original files")
+        self.log(f"📄 Log file: {self.log_file_path}")
+
+        if not aupreset_files:
+            self.log("   No files found")
+            return []
+
+        processed_files = []
+        skipped_files = []
+        failed_files = []
+
+        for i, aupreset_file in enumerate(aupreset_files, 1):
+            self.log(f"\n{'='*80}")
+            self.log(f"📄 File {i}/{len(aupreset_files)}")
+            self.log(f"📁 {aupreset_file.relative_to(input_path)}")
+
+            try:
+                result = self.map_preset(aupreset_file, replace_originals)
+
+                if result:
+                    processed_files.append(result)
+                    self.log(f"✅ SUCCESS")
+                else:
+                    skipped_files.append(aupreset_file)
+                    self.log(f"⚠️  SKIPPED (mappings may already exist)")
+
+            except Exception as e:
+                failed_files.append({'file': aupreset_file, 'error': str(e)})
+                self.log(f"❌ ERROR: {e}")
+
+        self.log(f"\n{'='*80}")
+        self.log(f"🎯 BATCH COMPLETE")
+        self.log(f"{'='*80}")
+        self.log(f"📊 Total files: {len(aupreset_files)}")
+        self.log(f"✅ Processed: {len(processed_files)}")
+        self.log(f"⚠️  Skipped: {len(skipped_files)}")
+        self.log(f"❌ Failed: {len(failed_files)}")
+        self.log(f"📄 Log: {self.log_file_path}")
+
+        return processed_files
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Add additional automation mappings (portV2, freq, res, timbre) to Omnisphere aupreset files"
+    )
+    parser.add_argument('input', help='Input aupreset file or directory')
+    parser.add_argument('--batch', action='store_true', help='Process directory recursively')
+    parser.add_argument('--pattern', default='*.aupreset', help='File pattern for batch')
+    parser.add_argument('--replace', action='store_true',
+                        help='Replace original files (backup recommended)')
+
+    args = parser.parse_args()
+
+    print("🎛️  Omnisphere Additional Automation Mapper")
+    print("=" * 60)
+    print("🎯 Adding: portV2, freq, res, timbre")
+    if args.replace:
+        print("🔄 Mode: Replacing originals (backup recommended!)")
+    print()
+
+    mapper = AdditionalMappingsMapper()
+
+    if args.batch:
+        results = mapper.batch_map_presets(args.input, args.pattern, args.replace)
+
+        if results:
+            print(f"\n🎉 Processed {len(results)} files")
+        else:
+            print(f"\n⚠️  No files processed")
+    else:
+        result = mapper.map_preset(args.input, args.replace)
+
+        if result:
+            print(f"\n🎉 Complete!")
+            print(f"   Output: {result}")
+        else:
+            print(f"\n⚠️  No changes made")
+
+if __name__ == "__main__":
+    main()
