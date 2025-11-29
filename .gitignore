@@ -1,1 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output directories
+output/
+output-*/
 output-sampler/
+Output/
+test-output/
+
+# Temporary files
+temp*.xml
+temp*.adg
+temp*.adv
+*.tmp
+
+# Node (if any JS utilities)
+node_modules/
+package-lock.json
+
+# Ableton Project files (not needed in repo)
+Ableton Project Info/
+*.als
+Backup/
+
+# Audio files (too large for git)
+*.wav
+*.aif
+*.aiff
+*.mp3
+*.flac
+
+# Test fixtures (add specific ones as needed)
+test-fixtures/*.adg
+test-fixtures/*.adv
+
+# Migration script (temporary)
+migrate_files.sh
