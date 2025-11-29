@@ -101,101 +101,68 @@ python scripts/utils/update_macro_scroll_position.py /path/to/device.adg
 
 ## Development Principles
 
-### Test-Driven Development (TDD)
-This project follows strict TDD principles. **Always write tests first before implementing any new functionality.**
+### Testing Philosophy
 
-1. **Red Phase**: Write a failing test that defines the desired behavior
-2. **Green Phase**: Write the minimal code to make the test pass
-3. **Refactor Phase**: Improve the code while keeping tests green
+This project prioritizes **production-proven code over extensive test coverage**.
 
-### Testing Strategy
-- **Unit Tests**: Test individual functions and classes in isolation
-- **Integration Tests**: Test interactions between components
-- **E2E Tests**: Test complete workflows from user perspective
+**Current Validation Approach:**
+- **Primary testing:** Manual verification in Ableton Live (open the generated device)
+- **Production use:** 2+ years of real-world usage in live performance systems
+- **Immediate feedback:** Invalid ADG files fail to load (obvious, instant feedback)
+- **Stability:** ADG/ADV file format is stable and well-understood
 
-## Testing Commands
+**Why not strict TDD:**
+- Generated devices must be tested in Ableton anyway (automated tests can't verify sound/UI)
+- File operations are simple and stable (gzip compression, XML manipulation)
+- Low risk: bugs are immediately obvious when device won't load
+- Production use is the best validation
 
-### Python Testing (Current Implementation)
+### Future Testing (V3.0+)
+
+When transitioning to library-first architecture, targeted testing will be added:
+
+**Test priorities:**
+1. **Core utilities** - encoder/decoder roundtrip tests
+2. **Sample categorization** - ensure kicks/snares/hats are detected correctly
+3. **Integration tests** - can we create a working drum rack end-to-end?
+
+**Target coverage:** 60-80% (focus on complex logic, not simple file I/O)
+
+**Testing tools (optional):**
 ```bash
-# Run all tests
-python -m pytest
+# Install testing dependencies (optional)
+pip install pytest pytest-cov
 
-# Run with coverage
-python -m pytest --cov=scripts --cov-report=html
-
-# Run specific test file
-python -m pytest tests/test_adg_encoder.py
-
-# Run tests matching pattern
-python -m pytest -k "test_drum_rack"
-
-# Run tests in watch mode
-python -m pytest-watch
-```
-
-### JavaScript/TypeScript Testing (Future Web App)
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run unit tests only
-npm run test:unit
-
-# Run integration tests
-npm run test:integration
-
-# Run E2E tests
-npm run test:e2e
+# Run basic integration tests
+python -m pytest tests/
 
 # Generate coverage report
-npm run test:coverage
+python -m pytest --cov=src --cov-report=html
 ```
 
 ## Requirements
-- Python 3.6+
-- pytest for Python testing
-- pytest-cov for coverage reports
-- pytest-watch for continuous testing
+- Python 3.8+
 - Supported audio formats: .wav, .aiff, .flac, .mp3
 - Output devices are placed in `/output/` directory
+- **Testing dependencies (optional):** pytest, pytest-cov
 
-## TDD Workflow Example
+## Code Quality Principles
 
-When implementing a new feature:
-```bash
-# 1. Create test file first
-touch tests/test_new_feature.py
+### What Matters Most
+1. **Does it work in Ableton?** - The ultimate test
+2. **Is it production-proven?** - Real-world usage over synthetic tests
+3. **Is the code readable?** - Clear logic over clever tricks
+4. **Zero dependencies** - Keep it simple and portable
 
-# 2. Write failing test
-# 3. Run test to confirm it fails
-python -m pytest tests/test_new_feature.py
-
-# 4. Implement minimal code to pass
-# 5. Run test to confirm it passes
-python -m pytest tests/test_new_feature.py
-
-# 6. Refactor if needed
-# 7. Run all tests to ensure nothing broke
-python -m pytest
-
-# 8. Check coverage
-python -m pytest --cov=scripts
-```
-
-## Code Review Checklist
-- [ ] All new code has corresponding tests
-- [ ] Tests are written before implementation (TDD)
-- [ ] All tests pass locally
-- [ ] Code coverage is maintained or improved
-- [ ] Integration tests cover main workflows
-- [ ] E2E tests verify user-facing functionality
+### Code Review Checklist
+- [ ] Script tested manually in Ableton Live
+- [ ] Error handling for common failure cases (missing files, invalid paths)
+- [ ] Code is readable and well-commented
+- [ ] No external dependencies added
+- [ ] Documentation updated if behavior changes
 
 ## Notes
 - All paths in generated devices use absolute paths for reliability
 - Scripts are designed to handle large sample libraries efficiently
 - Error handling allows scripts to continue even if individual samples fail
-- **Every bug fix must include a test that reproduces the bug**
-- **No code changes without tests**
+- Manual testing in Ableton Live is the primary validation method

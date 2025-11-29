@@ -17,7 +17,9 @@ from utils.decoder import decode_adg
 from utils.encoder import encode_adg
 
 # Test configuration
-SAMPLE_LIBRARY = Path("/Users/Shared/Music/Soundbanks/Native Instruments/Expansions/Void Eclipse Library/Samples/Drums")
+# Use environment variable or default to common NI location
+DEFAULT_SAMPLE_PATH = Path.home() / "Music/Soundbanks/Native Instruments/Expansions"
+SAMPLE_LIBRARY = Path(os.getenv("TEST_SAMPLE_LIBRARY", DEFAULT_SAMPLE_PATH / "Void Eclipse Library/Samples/Drums"))
 TEMPLATES_DIR = Path("templates")
 OUTPUT_DIR = Path("test-output")
 
