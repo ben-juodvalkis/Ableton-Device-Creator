@@ -7,7 +7,7 @@
 
 ## Overview
 
-Comprehensive suite of 80+ production-tested Python scripts for automating Ableton Live device creation and modification. Born from 2+ years of use in professional live performance systems.
+Comprehensive suite of production-tested Python scripts for automating Ableton Live device creation and modification. Born from 2+ years of use in professional live performance systems.
 
 ### What Can You Do?
 
@@ -16,6 +16,13 @@ Comprehensive suite of 80+ production-tested Python scripts for automating Ablet
 - **Build multi-device racks** with complex routing and layering
 - **Convert between formats** (Simpler ↔ DrumCell, ADG manipulation)
 - **Batch process** entire sample libraries in minutes
+
+## Related Projects
+
+**Omnisphere preset extraction tools** have been moved to a dedicated repository:
+👉 [Omnisphere-Tools](https://github.com/YOUR-USERNAME/Omnisphere-Tools) - Extract and analyze Spectrasonics Omnisphere presets
+
+This repository focuses exclusively on **documented Ableton Live file formats** (ADG/ADV).
 
 ## Quick Start
 
