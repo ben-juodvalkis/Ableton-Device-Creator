@@ -1785,6 +1785,51 @@ After reviewing the plan, we decided to adopt a pragmatic testing approach align
 - Roundtrip verification: ✓ Perfect match
 
 **Next Steps:**
-- [ ] Commit Phase 1 changes
-- [ ] Begin Phase 2: Sample categorization and DrumRackCreator
-- [ ] Create `sample_utils.py` with categorization logic
+- [x] Commit Phase 1 changes
+- [x] Begin Phase 2: Sample categorization and DrumRackCreator
+- [x] Create `sample_utils.py` with categorization logic
+
+---
+
+### 2025-11-29 - Phase 2 Core Complete ✓
+
+**Completed Tasks:**
+1. ✓ Created `sample_utils.py` with comprehensive categorization:
+   - `categorize_samples()`: Categorize by filename keywords
+   - `categorize_by_folder()`: Categorize by folder structure
+   - `validate_samples()`: Validate audio file paths
+   - `detect_velocity_layers()`: Detect multi-velocity samples
+   - `sort_samples_natural()`: Natural number sorting
+   - 9 drum categories (kick, snare, hat, clap, tom, cymbal, perc, shaker, open_hat)
+   - Support for .wav, .aif, .aiff, .flac, .mp3
+
+2. ✓ Created `DrumRackCreator` class:
+   - `from_folder()`: Simple mode - fill pads sequentially
+   - `from_categorized_folders()`: Organize by category with custom layouts
+   - Supports standard, 808, and percussion layouts
+   - Automatic MIDI note mapping
+   - XML transformation with sample path updates
+
+3. ✓ Integration testing:
+   - Created 15 test samples (5 kicks, 5 snares, 5 hats)
+   - Categorization: ✓ Correctly identified all samples
+   - Drum rack creation: ✓ 57KB ADG generated
+   - Verification: ✓ All 15 samples present in output
+
+**Test Results:**
+```
+Input: 15 WAV samples (kicks, snares, hats)
+Categorization: 100% accurate
+Output: 57KB ADG with 15 sample references
+Verification: ✓ All samples mapped correctly
+```
+
+**Files Created:**
+- `src/ableton_device_creator/drum_racks/__init__.py`
+- `src/ableton_device_creator/drum_racks/sample_utils.py` (280 lines)
+- `src/ableton_device_creator/drum_racks/creator.py` (380 lines)
+
+**Next Steps:**
+- [ ] Commit Phase 2 changes
+- [ ] Test in Ableton Live (manual validation)
+- [ ] Phase 3: Add more creator methods (velocity layers, batch processing)
