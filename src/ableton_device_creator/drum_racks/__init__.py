@@ -6,6 +6,7 @@ drum racks from sample folders.
 """
 
 from .creator import DrumRackCreator
+from .modifier import DrumRackModifier
 from .sample_utils import (
     categorize_samples,
     categorize_by_folder,
@@ -17,6 +18,7 @@ from .sample_utils import (
 
 __all__ = [
     "DrumRackCreator",
+    "DrumRackModifier",
     "categorize_samples",
     "categorize_by_folder",
     "validate_samples",

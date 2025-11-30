@@ -26,7 +26,7 @@ __license__ = "MIT"
 from .core import decode_adg, encode_adv, encode_adg
 
 # Drum rack creation
-from .drum_racks import DrumRackCreator
+from .drum_racks import DrumRackCreator, DrumRackModifier
 
 # Macro mapping
 from .macro_mapping import CCControlMapper, DrumPadColorMapper, TransposeMapper, DRUM_COLORS
@@ -40,6 +40,7 @@ __all__ = [
     "encode_adv",
     # Drum Racks
     "DrumRackCreator",
+    "DrumRackModifier",
     # Macro Mapping
     "CCControlMapper",
     "DrumPadColorMapper",

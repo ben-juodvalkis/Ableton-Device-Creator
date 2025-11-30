@@ -2066,6 +2066,44 @@ transpose.add_transpose_mapping(macro_index=15).save("output.adg")
 
 ---
 
+### 2025-11-29 - Phase 2.5: Drum Rack Modification Added ✓
+
+**Completed Tasks:**
+1. ✓ Created `drum_racks/modifier.py` - DrumRackModifier class (200 lines)
+2. ✓ Implemented MIDI note remapping functionality
+3. ✓ Added view scroll position adjustment
+4. ✓ Tested with real drum racks - fully functional
+
+**New Capabilities:**
+
+```python
+from ableton_device_creator.drum_racks import DrumRackModifier
+
+# Remap MIDI notes (shift which keys trigger which pads)
+modifier = DrumRackModifier("input.adg")
+modifier.remap_notes(shift=28, scroll_shift=7).save("remapped.adg")
+
+# Check current note mappings
+mappings = modifier.get_note_mappings()
+print(f"Pad 1 responds to MIDI note {mappings[0]}")
+
+# Set individual pad mapping
+modifier.set_note_mapping(pad_index=0, midi_note=60)  # Middle C
+```
+
+**Test Results:**
+- ✅ Remapped 32-pad drum rack successfully
+- ✅ All notes shifted by +28 semitones
+- ✅ View scroll position updated
+- ✅ Double-remapping works (can chain operations)
+- ✅ Loads perfectly in Ableton Live
+
+**Consolidated V2 Scripts:**
+- `drum-racks/modification/remap_drum_rack_notes.py` (175 lines) → `modifier.py`
+- `drum-racks/batch/batch_remap_drum_racks.py` → (batching to be added)
+
+---
+
 **Next Phase Options:**
 - Add CLI interface (`adc create-drum-rack samples/`)
 - Add batch processing for libraries
