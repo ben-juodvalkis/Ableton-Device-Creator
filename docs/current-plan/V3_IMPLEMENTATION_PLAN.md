@@ -2104,9 +2104,25 @@ modifier.set_note_mapping(pad_index=0, midi_note=60)  # Middle C
 
 ---
 
-**Next Phase Options:**
-- Add CLI interface (`adc create-drum-rack samples/`)
-- Add batch processing for libraries
-- Add velocity layer support
-- Add Simpler/Sampler device creation
-- Migrate conversion utilities
+### 2025-11-29 - Removed CC Control (Non-Essential) ✂️
+
+**Decision:** Removed CCControlMapper from Phase 3
+- CC Control insertion was causing XML structure issues
+- Feature is a one-off use case, not core functionality
+- Can be addressed later if needed
+- Focus on production-proven, high-value features
+
+**Changes:**
+- ❌ Removed `macro_mapping/cc_controller.py`
+- ✅ Kept `color_mapper.py` (working)
+- ✅ Kept `transpose.py` (working for pitched instruments)
+- Updated all module exports
+
+**Revised Phase 3 Status:**
+- DrumPadColorMapper: ✅ Working
+- TransposeMapper: ✅ Working (for MultiSampler/Simpler)
+- CCControlMapper: ❌ Removed (unstable, low priority)
+
+---
+
+**Next: Phase 4 - Sampler & Simpler Creation**

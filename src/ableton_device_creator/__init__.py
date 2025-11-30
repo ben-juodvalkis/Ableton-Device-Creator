@@ -6,16 +6,20 @@ devices (.adg) and presets (.adv) programmatically.
 
 Basic Usage:
     >>> from ableton_device_creator.core import decode_adg, encode_adg
-    >>> from ableton_device_creator.drum_racks import DrumRackCreator
-    >>> from ableton_device_creator.macro_mapping import CCControlMapper
+    >>> from ableton_device_creator.drum_racks import DrumRackCreator, DrumRackModifier
+    >>> from ableton_device_creator.macro_mapping import DrumPadColorMapper
     >>>
     >>> # Create drum rack
     >>> creator = DrumRackCreator("template.adg")
     >>> creator.from_folder("samples/", output="MyRack.adg")
     >>>
-    >>> # Add CC control
-    >>> mapper = CCControlMapper("MyRack.adg")
-    >>> mapper.add_cc_mappings({3: (119, 15)}).save("Mapped.adg")
+    >>> # Color the pads
+    >>> colorizer = DrumPadColorMapper("MyRack.adg")
+    >>> colorizer.apply_colors().save("Colored.adg")
+    >>>
+    >>> # Remap MIDI notes
+    >>> modifier = DrumRackModifier("MyRack.adg")
+    >>> modifier.remap_notes(shift=12).save("Remapped.adg")
 """
 
 __version__ = "3.0.0-alpha.1"
@@ -29,7 +33,7 @@ from .core import decode_adg, encode_adv, encode_adg
 from .drum_racks import DrumRackCreator, DrumRackModifier
 
 # Macro mapping
-from .macro_mapping import CCControlMapper, DrumPadColorMapper, TransposeMapper, DRUM_COLORS
+from .macro_mapping import DrumPadColorMapper, TransposeMapper, DRUM_COLORS
 
 __all__ = [
     "__version__",
@@ -42,7 +46,6 @@ __all__ = [
     "DrumRackCreator",
     "DrumRackModifier",
     # Macro Mapping
-    "CCControlMapper",
     "DrumPadColorMapper",
     "TransposeMapper",
     "DRUM_COLORS",
