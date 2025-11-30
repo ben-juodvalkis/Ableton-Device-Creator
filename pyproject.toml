@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ableton-device-creator"
+version = "3.0.0-alpha.1"
+description = "Professional toolkit for Ableton Live device creation and modification"
+authors = [
+    {name = "Ben Juodvalkis", email = "ben@example.com"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Multimedia :: Sound/Audio",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = ["ableton", "audio", "music-production", "device-creation"]
+
+dependencies = []  # Zero dependencies for core
+
+[project.optional-dependencies]
+cli = ["click>=8.0.0"]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.7.0",
+    "flake8>=6.1.0",
+]
+
+[project.scripts]
+adc = "ableton_device_creator.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ben-juodvalkis/Ableton-Device-Creator"
+Repository = "https://github.com/ben-juodvalkis/Ableton-Device-Creator"
+Issues = "https://github.com/ben-juodvalkis/Ableton-Device-Creator/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''

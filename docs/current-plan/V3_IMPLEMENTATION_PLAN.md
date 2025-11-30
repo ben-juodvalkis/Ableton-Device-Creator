@@ -1716,3 +1716,75 @@ def test_complete_drum_rack_workflow(test_rack_adg, test_samples, tmp_path):
 3. Testing strategy deep-dive?
 
 Let me know how you'd like to proceed!
+
+---
+
+## Implementation Log
+
+### 2025-11-29 - Project Start
+
+**Decision: Revised Testing Strategy**
+
+After reviewing the plan, we decided to adopt a pragmatic testing approach aligned with the project's production-proven philosophy:
+
+- **Phase 1 (Core Utilities):** Skip comprehensive testing
+  - Rationale: decoder/encoder are simple gzip wrappers with 2+ years production use
+  - Validation: Package installation and import tests only
+  - ADG files fail loudly if broken (instant feedback in Ableton)
+
+- **Phase 2+ (Complex Logic):** Add targeted testing
+  - Focus: Sample categorization, velocity layer detection, MIDI note mapping
+  - Target: 60-80% coverage on complex logic (not trivial I/O)
+  - Integration tests for end-to-end workflows (samples → device → verify)
+
+- **Real validation:** Test each phase output in Ableton Live
+  - Does the device load?
+  - Do samples trigger correctly?
+  - Are note mappings correct?
+
+**Next Steps:**
+- [x] Begin Phase 1: Foundation & Core (simplified, no 100% coverage requirement)
+- [x] Create package structure
+- [x] Migrate core utilities
+- [x] Verify package installation
+
+**Status:** Phase 1 foundation complete!
+
+---
+
+### 2025-11-29 - Phase 1 Foundation Complete ✓
+
+**Completed Tasks:**
+1. ✓ Created `v3-reorganization` branch
+2. ✓ Tagged current state as `v2.1-pre-reorganization`
+3. ✓ Created package structure:
+   ```
+   src/ableton_device_creator/
+   ├── __init__.py
+   ├── core/
+   │   ├── __init__.py
+   │   ├── decoder.py
+   │   ├── encoder.py
+   ├── drum_racks/
+   ├── macro_mapping/
+   ├── sampler/
+   ├── conversion/
+   └── instrument_racks/
+   ```
+4. ✓ Created `pyproject.toml` (simplified, optional testing deps)
+5. ✓ Migrated core utilities with improvements:
+   - `decoder.py`: Added type hints, better error handling
+   - `encoder.py`: Added type hints, validates XML, creates parent dirs
+6. ✓ Package installs successfully: `pip install -e .`
+7. ✓ Verified imports work: `from ableton_device_creator.core import decode_adg, encode_adg`
+8. ✓ Tested roundtrip: decode → encode → decode (✓ matches)
+
+**Test Results:**
+- Decoded 1.1MB XML from template ADG
+- Encoded to 57KB gzipped ADG
+- Roundtrip verification: ✓ Perfect match
+
+**Next Steps:**
+- [ ] Commit Phase 1 changes
+- [ ] Begin Phase 2: Sample categorization and DrumRackCreator
+- [ ] Create `sample_utils.py` with categorization logic
