@@ -28,11 +28,21 @@ output-sampler/
 Output/
 test-output/
 
+# Test directories (temporary)
+test_samples/
+test_samples_*/
+test-*
+
 # Temporary files
 temp*.xml
 temp*.adg
 temp*.adv
 *.tmp
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
 
 # Node (if any JS utilities)
 node_modules/
