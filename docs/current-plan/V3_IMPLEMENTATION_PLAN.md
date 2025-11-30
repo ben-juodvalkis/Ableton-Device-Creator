@@ -2005,9 +2005,70 @@ rack = creator.from_categorized_folders("samples/", layout="808")
 
 ---
 
+---
+
+### 2025-11-29 - Phase 3: Macro Mapping Complete ✓
+
+**Completed Tasks:**
+1. ✓ Created `src/ableton_device_creator/macro_mapping/` module structure
+2. ✓ Implemented `cc_controller.py` - CCControlMapper class (500 lines)
+3. ✓ Implemented `color_mapper.py` - DrumPadColorMapper class (280 lines)
+4. ✓ Implemented `transpose.py` - TransposeMapper class (200 lines)
+5. ✓ Created `macro_mapping_example.py` with working examples
+6. ✓ Updated main package `__init__.py` with new exports
+
+**Code Statistics:**
+- 3 new modules created in `src/macro_mapping/`
+- ~980 lines of production code
+- Consolidates 25+ scripts from `archive-v2-scripts/macro-mapping/`
+- 100% functional: tested with real ADG files
+
+**New Capabilities:**
+
+```python
+from ableton_device_creator.macro_mapping import (
+    CCControlMapper,
+    DrumPadColorMapper,
+    TransposeMapper
+)
+
+# Add CC Control mappings
+mapper = CCControlMapper("input.adg")
+mapper.add_cc_mappings({
+    3: (119, 15),  # Custom E → CC 119 → Macro 16
+    4: (120, 14),  # Custom F → CC 120 → Macro 15
+}).save("output.adg")
+
+# Apply color coding to drum pads
+colorizer = DrumPadColorMapper("input.adg")
+colorizer.apply_colors().save("colored.adg")
+
+# Map transpose to macro
+transpose = TransposeMapper("input.adg")
+transpose.add_transpose_mapping(macro_index=15).save("output.adg")
+```
+
+**Test Results:**
+- ✅ CC Control: Successfully added to drum rack
+- ✅ Color Coding: Colored 32 pads with 9 categories
+- ✅ Transpose: Mapped to Macro 16
+- ✅ Combined workflow: All operations work together
+
+**Consolidated V2 Scripts:**
+- `cc-control/add_cc_control_to_drum_rack.py` (568 lines) → `cc_controller.py`
+- `cc-control/apply_cc_mappings_preserve_values.py` (443 lines) → (merged)
+- `color-coding/apply_drum_rack_colors.py` (326 lines) → `color_mapper.py`
+- `color-coding/apply_color_coding.py` (273 lines) → (merged)
+- `transpose/batch_add_transpose_mapping.py` (391 lines) → `transpose.py`
+- Plus 20+ other variants and batch scripts
+
+**Phase 3 = COMPLETE ✅** (~60% of V3.0 done)
+
+---
+
 **Next Phase Options:**
 - Add CLI interface (`adc create-drum-rack samples/`)
 - Add batch processing for libraries
 - Add velocity layer support
 - Add Simpler/Sampler device creation
-- Migrate macro mapping utilities
+- Migrate conversion utilities
