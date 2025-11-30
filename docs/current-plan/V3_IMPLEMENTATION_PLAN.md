@@ -1912,6 +1912,51 @@ The V3.0 architecture is **proven to work**. This validates:
 
 ---
 
+### 2025-11-29 - Repository Cleanup ✓
+
+**Major reorganization to prepare for V3 migration:**
+
+Moved to `archive-v2-scripts/`:
+- ✅ drum-racks/ (114 files) - Partially migrated to `src/drum_racks/`
+- ✅ sampler/ - To be migrated
+- ✅ macro-mapping/ - To be migrated
+- ✅ simpler/ - To be migrated
+- ✅ instrument-racks/ - To be migrated
+- ✅ conversion/ - To be migrated
+- ✅ utils/ - Already migrated to `src/core/`
+- ✅ kontakt/ - Evaluate for migration
+- ✅ analysis/ - Evaluate for migration
+
+Removed test artifacts:
+- test_samples/ (empty dummy files)
+- test_samples_real/ (temporary copies)
+- test-output/ (old artifacts)
+
+**New clean structure:**
+```
+Ableton Device Creator/
+├── src/                     # ✅ V3 library code
+├── archive-v2-scripts/      # 📚 V2 reference
+├── archive-v1/              # 🗄️ V1 archive
+├── templates/               # ADG/ADV templates
+├── docs/                    # Documentation
+├── examples/                # Usage examples
+└── output/                  # Generated devices
+```
+
+**Benefits:**
+- Clear separation: production code vs reference code
+- Easy to see what's migrated vs what's pending
+- Clean git history with file renames preserved
+- Can still reference old implementations during migration
+
+**Git Status:**
+- 5 commits on v3-reorganization
+- All changes pushed
+- Clean working directory
+
+---
+
 **Next Phase Options:**
 - Add CLI interface (`adc create-drum-rack samples/`)
 - Add batch processing for libraries
