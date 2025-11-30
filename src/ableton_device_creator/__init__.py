@@ -36,7 +36,7 @@ __author__ = "Ben Juodvalkis"
 __license__ = "MIT"
 
 # Core utilities
-from .core import decode_adg, encode_adv, encode_adg
+from .core import decode_adg, decode_adv, encode_adg, encode_adv
 
 # Drum rack creation
 from .drum_racks import DrumRackCreator, DrumRackModifier

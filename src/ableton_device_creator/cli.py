@@ -128,7 +128,7 @@ def drum_rack_create(samples_dir, output, template, layout, categorize, recursiv
 
         if categorize:
             result = creator.from_categorized_folders(
-                samples_dir=samples_dir, output=output, layout=layout, recursive=recursive
+                samples_dir=samples_dir, output=output, layout=layout
             )
         else:
             result = creator.from_folder(
@@ -140,7 +140,8 @@ def drum_rack_create(samples_dir, output, template, layout, categorize, recursiv
 
     except Exception as e:
         click.secho(f"Error: {e}", fg="red")
-        if click.get_current_context().obj.get("verbose", False):
+        ctx_obj = click.get_current_context().obj or {}
+        if ctx_obj.get("verbose", False):
             import traceback
 
             traceback.print_exc()
