@@ -1,347 +1,481 @@
-# Ableton Device Creator V2.0
+# Ableton Device Creator V3.0
 
-> **Professional toolkit for creating, modifying, and managing Ableton Live devices**
+> **Professional Python toolkit for creating and modifying Ableton Live devices**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
 ## Overview
 
-Comprehensive suite of production-tested Python scripts for automating Ableton Live device creation and modification. Born from 2+ years of use in professional live performance systems.
+Modern Python library for programmatically creating and modifying Ableton Live devices (.adg) and presets (.adv). Born from 2+ years of production use in professional live performance systems.
 
-### What Can You Do?
+### What's New in V3.0?
 
-- **Create drum racks** from sample libraries with intelligent categorization
-- **Automate macro mapping** for CC control, transpose, and color coding
-- **Build multi-device racks** with complex routing and layering
-- **Convert between formats** (Simpler ↔ DrumCell, ADG manipulation)
-- **Batch process** entire sample libraries in minutes
+✨ **Modern Python Package** - Installable with pip, proper module structure
+🎯 **Simple API** - High-level classes replace 100+ scripts
+⚡ **CLI Tool** - Command-line interface for quick workflows
+📚 **Zero Dependencies** - Core uses only Python stdlib
+🎨 **Production-Ready** - Tested with real samples and DAW
 
-## Related Projects
-
-**Omnisphere preset extraction tools** have been moved to a dedicated repository:
-👉 [Omnisphere-Tools](https://github.com/YOUR-USERNAME/Omnisphere-Tools) - Extract and analyze Spectrasonics Omnisphere presets
-
-This repository focuses exclusively on **documented Ableton Live file formats** (ADG/ADV).
+---
 
 ## Quick Start
 
 ### Installation
 
 ```bash
+# Install the package
+pip install ableton-device-creator
+
+# Or install from source
 git clone https://github.com/ben-juodvalkis/Ableton-Device-Creator.git
 cd "Ableton-Device-Creator"
+pip install -e .
 
-# No dependencies required! Uses Python standard library only
-python3 --version  # Ensure Python 3.8+
+# Optional: Install CLI support
+pip install ableton-device-creator[cli]
 ```
 
-### Basic Usage
+### Basic Usage (Python API)
 
-**Create a drum rack from samples:**
+```python
+from ableton_device_creator.drum_racks import DrumRackCreator
+from ableton_device_creator.sampler import SamplerCreator
+
+# Create drum rack from samples
+creator = DrumRackCreator(template="templates/input_rack.adg")
+rack = creator.from_folder("samples/drums/", output="MyKit.adg")
+
+# Create chromatic sampler
+sampler = SamplerCreator(template="templates/sampler-rack.adg")
+instrument = sampler.from_folder("samples/", layout="chromatic")
+```
+
+### Basic Usage (CLI)
 
 ```bash
-python3 drum-racks/creation/main_simple_folder.py \
-  templates/input_rack.adg \
-  "/path/to/your/samples"
+# Create drum rack
+adc drum-rack create samples/drums/
+
+# Apply color coding
+adc drum-rack color MyKit.adg
+
+# Create chromatic sampler
+adc sampler create samples/ --layout chromatic
+
+# Show device info
+adc util info MyKit.adg
 ```
 
-**Batch process entire sample library:**
-
-```bash
-python3 drum-racks/batch/meta_main_folders.py \
-  templates/input_rack.adg \
-  "/path/to/Native Instruments/Expansions"
-```
-
-**Add CC Control to existing drum racks:**
-
-```bash
-python3 macro-mapping/cc-control/batch_apply_cc_mappings.py \
-  "/path/to/your/drum/racks"
-```
+---
 
 ## Features
 
-### 🥁 Drum Rack Tools (37 scripts)
+### 🥁 Drum Rack Creation
 
-**Creation** ([drum-racks/creation/](drum-racks/creation/))
-- Standard NI expansion layout processing
-- Percussion-only rack creation
-- Multi-velocity layer support
-- Dual/triple device racks (electro + acoustic)
-- Template-based creation
-- Note-name based organization
+```python
+from ableton_device_creator.drum_racks import DrumRackCreator, DrumRackModifier
 
-**Batch Processing** ([drum-racks/batch/](drum-racks/batch/))
-- Process entire expansion libraries
-- Recursive folder processing
-- Battery kit organization
-- Bulk remapping and trimming
+# Create from folder with auto-categorization
+creator = DrumRackCreator("templates/input_rack.adg")
+rack = creator.from_categorized_folders(
+    "samples/drums/",
+    layout="808",  # or "standard", "percussion"
+    output="808_Kit.adg"
+)
 
-**Modification** ([drum-racks/modification/](drum-racks/modification/))
-- Remap MIDI notes
-- Trim to 16 pads
-- Replace sample paths
-- Merge multiple racks
-- Disable auto-coloring
+# Remap MIDI notes
+modifier = DrumRackModifier("MyKit.adg")
+modifier.remap_notes(shift=12).save("MyKit_High.adg")
+```
 
-### 🎛️ Macro Mapping Tools (18 scripts)
+**Features:**
+- Auto-categorize samples (kicks, snares, hats, etc.)
+- Multiple layouts (standard, 808, percussion)
+- MIDI note remapping
+- Batch processing
 
-**CC Control** ([macro-mapping/cc-control/](macro-mapping/cc-control/))
-- Automated CC Control device integration
-- DrumCell-specific mappings
-- Preserve existing values while adding new mappings
-- Batch processing entire libraries
-- Custom preset map generation
+### 🎨 Macro Mapping
 
-**Transpose** ([macro-mapping/transpose/](macro-mapping/transpose/))
-- Batch add transpose controls
-- Custom range configuration
+```python
+from ableton_device_creator.macro_mapping import DrumPadColorMapper, TransposeMapper
 
-**Color Coding** ([macro-mapping/color-coding/](macro-mapping/color-coding/))
-- Automatic color assignment by sample type
-- Batch apply across libraries
-- Custom color schemes
+# Apply color coding
+colorizer = DrumPadColorMapper("MyKit.adg")
+colorizer.apply_colors().save("MyKit_Colored.adg")
 
-### 🎹 Instrument Rack Tools (7 scripts)
+# Add transpose control
+transpose = TransposeMapper("MySampler.adg")
+transpose.add_transpose_mapping(macro_index=15).save("MySampler_Transpose.adg")
+```
 
-**Wrapping** ([instrument-racks/wrapping/](instrument-racks/wrapping/))
-- Wrap single devices in racks
-- Template-based wrapping
-- Dual/triple device rack creation
+**Features:**
+- Auto color pads by sample type
+- Add transpose controls to samplers
+- Preserve existing mappings
 
-**Multi-Device** ([instrument-racks/multi-device/](instrument-racks/multi-device/))
-- AUPreset wrapper for plugin automation
-- Round-robin sample rotation
-- Complex layering configurations
+### 🎹 Sampler & Simpler
 
-### 🔄 Conversion Tools (9 scripts)
+```python
+from ableton_device_creator.sampler import SamplerCreator, SimplerCreator
 
-**Simpler → DrumCell** ([conversion/simpler-to-drumcell/](conversion/simpler-to-drumcell/))
-- Convert Simpler devices to DrumCell
-- Batch drum rack conversion
-- Preserve sample mappings
+# Create chromatic sampler (maps samples to consecutive notes)
+sampler = SamplerCreator("templates/sampler-rack.adg")
+sampler.from_folder("samples/", layout="chromatic")
 
-**ADG Converter** ([conversion/adg-converter/](conversion/adg-converter/))
-- Format conversion with macro preservation
-- Apply macro mappings programmatically
-- Set macro values in bulk
-- Parameter visibility control
+# Create Simpler devices (one per sample)
+simpler = SimplerCreator("templates/simpler-template.adv")
+simpler.from_folder("samples/", output_folder="simplers/")
+```
 
-### 🎵 Sampler & Simpler (6 scripts)
-
-**Sampler** ([sampler/chromatic-mapping/](sampler/chromatic-mapping/))
-- Chromatic sample mapping (32 samples per octave)
-- Drum-style sampler layout
-- Percussion-only samplers
-- Phrase/loop organization
-
-**Simpler** ([simpler/](simpler/))
-- Create individual Simpler devices per sample
-- Maintains folder structure
+**Layouts:**
+- **Chromatic** - Maps samples from C-2 upward
+- **Drum** - 8 kicks, 8 snares, 8 hats, 8 perc
+- **Percussion** - Maps from C1 upward
 
 ### 🛠️ Core Utilities
 
-**[utils/](utils/)** - Shared components used by all scripts
-- `decoder.py` - Decompress ADG/ADV files to XML
-- `encoder.py` - Compress XML back to ADG/ADV
-- `transformer.py` - XML manipulation for drum racks
-- `simpler_transformer.py` - Simpler-specific transformations
-- `pitch_shifter.py` - Transpose sample regions
-- `scroll_position.py` - Update macro scroll positions
-- `set_macro.py` - Set macro values programmatically
+```python
+from ableton_device_creator.core import decode_adg, encode_adg
+
+# Decode ADG to XML for inspection
+xml = decode_adg("MyRack.adg")
+print(xml[:100])
+
+# Modify XML and re-encode
+encode_adg(modified_xml, "MyRack_Modified.adg")
+```
+
+---
+
+## CLI Reference
+
+Full CLI documentation: [docs/CLI_GUIDE.md](docs/CLI_GUIDE.md)
+
+### Drum Rack Commands
+
+```bash
+# Create drum rack
+adc drum-rack create samples/ -o MyKit.adg --layout 808
+
+# Apply colors
+adc drum-rack color MyKit.adg
+
+# Remap notes (shift up 1 octave)
+adc drum-rack remap MyKit.adg --shift 12
+```
+
+### Sampler Commands
+
+```bash
+# Create chromatic sampler
+adc sampler create samples/ --layout chromatic
+
+# Create drum-style sampler
+adc sampler create samples/ --layout drum --max-samples 32
+```
+
+### Simpler Commands
+
+```bash
+# Create Simpler devices (one per sample)
+adc simpler create samples/ -o simplers/
+
+# Process recursively
+adc simpler create samples/ --recursive
+```
+
+### Utility Commands
+
+```bash
+# Decode to XML
+adc util decode MyRack.adg -o MyRack.xml
+
+# Encode from XML
+adc util encode MyRack.xml -o MyRack.adg
+
+# Show device info
+adc util info MyRack.adg
+```
+
+---
 
 ## Project Structure
 
 ```
 Ableton-Device-Creator/
-├── drum-racks/              # 37 drum rack scripts
-│   ├── creation/            # Create from sample folders
-│   ├── batch/               # Process entire libraries
-│   └── modification/        # Modify existing racks
+├── src/ableton_device_creator/    # Python package
+│   ├── core/                       # ADG encoder/decoder
+│   ├── drum_racks/                 # Drum rack creation
+│   ├── sampler/                    # Sampler creation
+│   ├── macro_mapping/              # Color, transpose
+│   └── cli.py                      # Command-line interface
 │
-├── macro-mapping/           # 18 macro automation scripts
-│   ├── cc-control/          # CC Control integration
-│   ├── transpose/           # Transpose mapping
-│   └── color-coding/        # Automatic pad coloring
+├── examples/                       # Usage examples
+│   ├── drum_rack_example.py
+│   ├── sampler_example.py
+│   └── macro_mapping_example.py
 │
-├── instrument-racks/        # 7 multi-device rack scripts
-│   ├── wrapping/            # Wrap devices in racks
-│   └── multi-device/        # Complex rack creation
+├── templates/                      # Device templates
+│   ├── input_rack.adg              # Drum rack template
+│   ├── sampler-rack.adg            # Sampler template
+│   └── simpler-template.adv        # Simpler template
 │
-├── conversion/              # 9 format conversion scripts
-│   ├── simpler-to-drumcell/ # Simpler → DrumCell
-│   └── adg-converter/       # ADG manipulation
+├── docs/                           # Documentation
+│   ├── CLI_GUIDE.md                # CLI reference
+│   └── current-plan/               # Development docs
 │
-├── sampler/                 # 5 sampler creation scripts
-│   └── chromatic-mapping/   # Chromatic layout variants
-│
-├── simpler/                 # 1 simpler creation script
-│
-├── utils/                   # 10 core utilities
-│   ├── decoder.py           # ADG → XML
-│   ├── encoder.py           # XML → ADG
-│   └── transformer.py       # XML manipulation
-│
-├── templates/               # Device templates (.adg, .adv)
-│   ├── drum-racks/          # Drum rack templates
-│   ├── input_rack.adg       # Standard template
-│   └── simpler-template.adv # Simpler template
-│
-├── archive-v1/              # V1 code (preserved)
-│
-└── docs/                    # Documentation (planned)
-    ├── DRUM_RACKS.md
-    ├── MACRO_MAPPING.md
-    └── ADVANCED_USAGE.md
+└── archive-v2-scripts/             # V2 reference code
 ```
+
+---
 
 ## Common Workflows
 
-### Workflow 1: Organize Sample Library into Drum Racks
+### Workflow 1: Complete Drum Kit Setup
 
 ```bash
-# Process entire Native Instruments expansion library
-python3 drum-racks/batch/meta_main_folders.py \
-  templates/input_rack.adg \
-  "/Library/Application Support/Native Instruments/Expansions"
+# 1. Create drum rack
+adc drum-rack create samples/drums/ -o MyKit.adg
 
-# Output: Organized drum racks in output/ directory
+# 2. Apply color coding
+adc drum-rack color MyKit.adg
+
+# 3. Remap to higher octave (optional)
+adc drum-rack remap MyKit.adg --shift 12 -o MyKit_High.adg
 ```
 
-### Workflow 2: Add CC Control to All Your Drum Racks
+### Workflow 2: Sampler Library
 
-```bash
-# Batch add CC Control to existing racks
-python3 macro-mapping/cc-control/batch_apply_cc_mappings.py \
-  "/Users/You/Music/Ableton/User Library/Presets/Instruments/Drum Rack"
+```python
+from ableton_device_creator.sampler import SamplerCreator
 
-# Racks now have CC Control mapped to Macro 1
+creator = SamplerCreator("templates/sampler-rack.adg")
+
+# Create samplers for different categories
+creator.from_folder("samples/kicks/", output="Kicks_Chromatic.adg")
+creator.from_folder("samples/snares/", output="Snares_Chromatic.adg")
+creator.from_folder("samples/hats/", output="Hats_Chromatic.adg")
 ```
 
-### Workflow 3: Create Multi-Velocity Drum Rack
+### Workflow 3: Batch Processing
 
-```bash
-# Create rack with velocity layers
-python3 drum-racks/creation/create_multivelocity_drum_rack_v2.py \
-  templates/input_rack.adg \
-  "/path/to/velocity-layered/samples"
+```python
+from pathlib import Path
+from ableton_device_creator.drum_racks import DrumRackCreator
 
-# Automatically detects velocity markers in filenames
+creator = DrumRackCreator("templates/input_rack.adg")
+
+# Process all subfolders
+for folder in Path("samples").iterdir():
+    if folder.is_dir():
+        creator.from_folder(folder, output=f"output/{folder.name}.adg")
 ```
 
-### Workflow 4: Convert Simpler Rack to DrumCell
+---
 
-```bash
-# Convert existing drum rack from Simpler to DrumCell
-python3 conversion/simpler-to-drumcell/drum_rack_simpler_to_drumcell.py \
-  "My Drum Rack.adg"
+## API Documentation
 
-# Output: DrumCell-based version with all samples preserved
+### DrumRackCreator
+
+```python
+from ableton_device_creator.drum_racks import DrumRackCreator
+
+creator = DrumRackCreator(template="templates/input_rack.adg")
+
+# Simple mode - fill pads sequentially
+rack = creator.from_folder(
+    samples_dir="samples/",
+    output="MyRack.adg",
+    categorize=False
+)
+
+# Categorized mode - organize by sample type
+rack = creator.from_categorized_folders(
+    samples_dir="samples/",
+    layout="808",  # or "standard", "percussion"
+    output="Categorized.adg"
+)
 ```
+
+### SamplerCreator
+
+```python
+from ableton_device_creator.sampler import SamplerCreator
+
+creator = SamplerCreator(template="templates/sampler-rack.adg")
+
+# Chromatic layout (C-2 upward)
+sampler = creator.from_folder(
+    samples_dir="samples/",
+    layout="chromatic",
+    samples_per_instrument=32
+)
+
+# Drum layout (8 kicks, 8 snares, etc.)
+sampler = creator.from_folder(
+    samples_dir="samples/",
+    layout="drum"
+)
+```
+
+### SimplerCreator
+
+```python
+from ableton_device_creator.sampler import SimplerCreator
+
+creator = SimplerCreator(template="templates/simpler-template.adv")
+
+# Batch create (one .adv per sample)
+devices = creator.from_folder(
+    samples_dir="samples/",
+    output_folder="simplers/"
+)
+
+# Single device
+device = creator.from_sample(
+    sample_path="kick.wav",
+    output="kick.adv"
+)
+```
+
+---
 
 ## Requirements
 
-- **Python 3.8+** (no external dependencies!)
+- **Python 3.8+**
+- **Core:** Zero dependencies (stdlib only)
+- **CLI:** `click>=8.0.0` (optional, install with `pip install ableton-device-creator[cli]`)
 - **Ableton Live 11+** (for testing generated devices)
-- All scripts use Python standard library only
 
-## Use Cases
-
-### Music Producers
-- Organize massive sample libraries into browsable racks
-- Create consistent naming and folder structures
-- Batch process expansion packs
-
-### Sound Designers
-- Automate repetitive device configuration
-- Create multi-layered instruments quickly
-- Build template libraries
-
-### Live Performers
-- Build performance-ready racks with CC control
-- Create color-coded drum layouts for visual cueing
-- Standardize device configurations across sets
-
-## Documentation
-
-- **[CLAUDE.md](CLAUDE.md)** - Project overview and command reference
-- **[DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md)** - Development roadmap
-- **[ARCHITECTURE_REFERENCE.md](ARCHITECTURE_REFERENCE.md)** - Technical architecture
-- **[CODEBASE_OVERVIEW.md](CODEBASE_OVERVIEW.md)** - Detailed code analysis
+---
 
 ## How It Works
 
 ### ADG/ADV File Format
 
-Ableton Device files (.adg) and Device Presets (.adv) are **gzipped XML files**. This toolkit:
+Ableton device files (.adg) and presets (.adv) are **gzipped XML files**:
 
-1. **Decompresses** the .adg/.adv file to XML
-2. **Modifies** the XML structure (add samples, change mappings, etc.)
-3. **Recompresses** back to .adg/.adv format
-
-Example:
-
-```python
-from utils.decoder import decode_adg
-from utils.encoder import encode_adg
-
-# Decompress ADG to XML
-decode_adg("MyDrumRack.adg")  # Creates MyDrumRack.xml
-
-# Modify XML as needed...
-
-# Recompress to ADG
-encode_adg("MyDrumRack.xml")  # Creates MyDrumRack.adg
 ```
+MyRack.adg (55 KB gzipped)
+    ↓ decode
+MyRack.xml (1.1 MB uncompressed)
+    ↓ modify
+MyRack_Modified.xml
+    ↓ encode
+MyRack_Modified.adg (56 KB gzipped)
+```
+
+This toolkit:
+1. Decompresses .adg/.adv to XML
+2. Modifies the XML structure
+3. Recompresses to .adg/.adv
+
+---
 
 ## Version History
 
-### V2.0.0 (2025-11-28)
+### V3.0.0 (2025-11-29)
 
-**Complete rewrite** with production-ready tools from live performance system.
+**Complete rewrite as modern Python package**
 
 **New:**
-- 82 Python scripts migrated from Looping project
-- Organized into 10 logical categories
-- Comprehensive template library
-- Zero external dependencies
+- ✅ Installable Python package with pip
+- ✅ Clean API with high-level classes
+- ✅ CLI tool with 11 commands
+- ✅ Comprehensive documentation
+- ✅ Production-tested with real samples
+- ✅ Type hints throughout
+- ✅ Zero core dependencies
+
+**Migrated:**
+- 111 V2 scripts → 15 Python classes
+- Ad-hoc scripts → Organized modules
+- Manual workflows → CLI commands
 
 **Breaking Changes:**
-- Completely new directory structure
-- Different import paths
-- Not compatible with V1
+- New import paths (`from ableton_device_creator.drum_racks import ...`)
+- Different API (class-based instead of scripts)
+- V2 scripts preserved in `archive-v2-scripts/`
 
-V1 code preserved in `archive-v1/` branch for reference.
+### V2.0.0 (2025-11-28)
+
+Production-ready scripts from live performance system (111 scripts).
+
+### V1.0.0
+
+Original proof-of-concept (preserved in `archive-v1/`).
+
+---
+
+## Development
+
+### Running Examples
+
+```bash
+# Set PYTHONPATH
+export PYTHONPATH=src
+
+# Run examples
+python3 examples/drum_rack_example.py
+python3 examples/sampler_example.py
+python3 examples/cli_demo.py
+```
+
+### Testing Philosophy
+
+This project prioritizes **production-proven code** over extensive test coverage:
+
+- **Primary validation:** Manual testing in Ableton Live
+- **Production use:** 2+ years in professional live performance
+- **Immediate feedback:** Invalid ADG files fail to load in DAW
+- **Focus:** Real-world usage over synthetic tests
+
+---
+
+## Documentation
+
+- **[CLI Guide](docs/CLI_GUIDE.md)** - Complete CLI reference
+- **[CLAUDE.md](CLAUDE.md)** - Project context for AI assistants
+- **[Examples](examples/)** - Python API examples
+- **[V3 Implementation Plan](docs/current-plan/V3_IMPLEMENTATION_PLAN.md)** - Development roadmap
+
+---
 
 ## Contributing
 
-Contributions welcome! This project follows **strict Test-Driven Development (TDD)**:
+Contributions welcome! Please:
 
-1. Write tests first (Red phase)
-2. Implement minimal code (Green phase)
-3. Refactor (Refactor phase)
+1. Test in Ableton Live (the ultimate validation)
+2. Add examples for new features
+3. Update documentation
+4. Keep zero-dependency policy for core
 
-See [CLAUDE.md](CLAUDE.md) for TDD workflow and testing commands.
+---
 
 ## License
 
 MIT License - see LICENSE file for details.
 
+---
+
 ## Acknowledgments
 
-Built for the Ableton Live community with 2+ years of production use in professional live looping systems.
+Built for the Ableton Live community with 2+ years of production use.
 
-Special thanks to:
-- Native Instruments for expansions that inspired many batch scripts
-- The Ableton community for feedback and use cases
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/ben-juodvalkis/Ableton-Device-Creator/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ben-juodvalkis/Ableton-Device-Creator/discussions)
+**Special thanks:**
+- Native Instruments for sample libraries that inspired this toolkit
+- Ableton community for feedback and use cases
+- Claude AI for V3.0 refactoring assistance
 
 ---
 
-**Built with Claude Code** | [Documentation](CLAUDE.md) | [Architecture](ARCHITECTURE_REFERENCE.md)
+## Support
+
+- **Issues:** [GitHub Issues](https://github.com/ben-juodvalkis/Ableton-Device-Creator/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/ben-juodvalkis/Ableton-Device-Creator/discussions)
+- **Documentation:** [docs/](docs/)
+
+---
+
+**V3.0 - Built with Python & Claude Code**
