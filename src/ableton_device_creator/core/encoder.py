@@ -5,9 +5,9 @@ from pathlib import Path
 from typing import Union
 
 
-def encode_adg(xml_content: str, output_path: Union[str, Path]) -> Path:
+def encode_adg(xml_content: Union[str, bytes], output_path: Union[str, Path]) -> Path:
     """
-    Encode XML string to ADG file.
+    Encode XML string or bytes to ADG file.
 
     Matches Ableton's gzip format:
     - No timestamp (mtime=0)
@@ -16,7 +16,7 @@ def encode_adg(xml_content: str, output_path: Union[str, Path]) -> Path:
     - UTF-8 encoding
 
     Args:
-        xml_content: XML content as string
+        xml_content: XML content as string or bytes
         output_path: Where to save .adg file
 
     Returns:
@@ -33,8 +33,14 @@ def encode_adg(xml_content: str, output_path: Union[str, Path]) -> Path:
     """
     output_path = Path(output_path)
 
+    # Convert to bytes if string
+    if isinstance(xml_content, str):
+        xml_bytes = xml_content.encode('utf-8')
+    else:
+        xml_bytes = xml_content
+
     # Basic validation that content looks like XML
-    if not xml_content.strip().startswith('<?xml'):
+    if not xml_bytes.strip().startswith(b'<?xml'):
         raise ValueError(
             "Content must be valid XML starting with <?xml declaration"
         )
@@ -51,21 +57,21 @@ def encode_adg(xml_content: str, output_path: Union[str, Path]) -> Path:
                 mode='wb',
                 mtime=0           # No timestamp
             ) as gz:
-                gz.write(xml_content.encode('utf-8'))
+                gz.write(xml_bytes)
     except OSError as e:
         raise OSError(f"Failed to write file {output_path}: {e}") from e
 
     return output_path
 
 
-def encode_adv(xml_content: str, output_path: Union[str, Path]) -> Path:
+def encode_adv(xml_content: Union[str, bytes], output_path: Union[str, Path]) -> Path:
     """
-    Encode XML string to ADV file.
+    Encode XML string or bytes to ADV file.
 
     Alias for encode_adg() - both formats use same encoding.
 
     Args:
-        xml_content: XML content as string
+        xml_content: XML content as string or bytes
         output_path: Where to save .adv file
 
     Returns:
