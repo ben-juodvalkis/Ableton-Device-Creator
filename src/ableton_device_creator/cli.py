@@ -522,7 +522,7 @@ def util_info(file):
         )
 
         # Detect device type
-        xml_str = xml_content.decode("utf-8")
+        xml_str = xml_content.decode("utf-8") if isinstance(xml_content, bytes) else xml_content
         if "DrumGroupDevice" in xml_str:
             click.echo(f"  Type: Drum Rack")
         elif "MultiSampler" in xml_str:
@@ -532,8 +532,9 @@ def util_info(file):
         else:
             click.echo(f"  Type: Unknown")
 
-        # Count samples
-        sample_count = xml_str.count("<SampleRef>")
+        # Count samples. Drum racks and samplers write "<SampleRef Id=...>",
+        # Simpler writes a bare "<SampleRef>" — match the open tag either way.
+        sample_count = xml_str.count("<SampleRef")
         if sample_count > 0:
             click.echo(f"  Sample references: {sample_count}")
 
