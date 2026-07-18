@@ -43,6 +43,14 @@ src/ableton_device_creator/     # Modern Python package
 - `archive-v2-scripts/` - V2 reference scripts (111 scripts, read-only)
 - `archive-v1/` - V1 code (preserved, not functional)
 
+### Ad-Hoc Scripts (`scripts/`)
+
+One-off/donor-based workflows that sit on top of the core package rather than
+extending its public API — batch-processing specific sample libraries,
+donor-template cloning, one-time XML surgery. See **Sampler-Based Drum Rack
+Workflow** below for the active one. Not covered by the package's normal
+`__init__.py` exports; run directly with `PYTHONPATH=src python3 scripts/<name>.py`.
+
 ## Key Technical Information
 
 ### ADG/ADV File Format
@@ -238,7 +246,7 @@ This project prioritizes **production-proven code over extensive test coverage**
 **Purpose:** Low-level file format handling
 **Dependencies:** stdlib only (gzip, pathlib, xml.etree.ElementTree)
 **API:**
-- `decode_adg(file_path) -> bytes` - Decompress ADG/ADV to XML
+- `decode_adg(file_path) -> str` - Decompress ADG/ADV to XML
 - `encode_adg(xml_content, output_path) -> Path` - Compress XML to ADG/ADV
 - Both accept str or bytes for backward compatibility
 
@@ -297,14 +305,205 @@ This project prioritizes **production-proven code over extensive test coverage**
 - `adc simpler create`
 - `adc util decode|encode|info`
 
+## Sampler-Based Drum Rack Workflow
+
+**Purpose:** build 32-pad Drum Racks where every pad is a full Multi-Sampler
+(not a DrumCell/Simpler), loaded with a velocity-layered, round-robin
+multisample — for autosampled libraries like Heavyocity Damage that export
+one folder per instrument.
+
+**Source filename convention:** `<InstrumentName>-<Note>-V<velocity>-<RRid>.wav`
+(e.g. `Alfaias-C#4-V29-BRWQ.wav`), inside a per-instrument folder with
+`Close`/`Full` mic-position subfolders. All samples in one folder share a
+single recorded root note; velocities cluster into ~10 layer centers with
+several round-robin takes each.
+
+**Key files:**
+- `scripts/multisample_utils.py` — shared parsing: `parse_velocity_layers()`
+  reads a folder into `{velocity_center: [samples]}`, `velocity_bins()` turns
+  layer centers into contiguous non-overlapping velocity ranges (split at
+  midpoints between centers), `build_sample_parts()` builds the
+  `MultiSamplePart` XML elements (fixed on one root note), `enable_round_robin()`
+  flips the `MultiSampleMap`'s native `RoundRobin`/`RoundRobinMode` flags
+  (Cyclic) so Ableton auto-alternates same-key/same-velocity samples.
+- `scripts/create_alfaias_multisample.py` — standalone example: one instrument
+  folder → one single-key Sampler `.adg` (built on `templates/sampler-rack.adg`).
+- `scripts/create_variety_drum_rack.py` — the main tool: builds full 32-pad
+  kits. `KITS` is a dict of kit name → list of `(category, instrument)` pairs;
+  edit it to add/change curated kits. `discover_catalog()` +
+  `build_random_kits()` generate additional seeded-random kits sampled from
+  the whole library (edit `NUM_RANDOM_KITS`/`RANDOM_KIT_SIZE`/`RANDOM_SEED_BASE`
+  at the top of the file). `SAMPLE_LIBRARY_ROOT` and `OUTPUT_DIR` are also set
+  at the top — **update `SAMPLE_LIBRARY_ROOT` if the source library moves**
+  (it has moved once already).
+
+**Critical design rule — never reconstruct rack structure, only swap sample
+content:** `templates/sampler_drum_rack_template.adg` is a full 32-pad Drum
+Rack built and exported by hand in Ableton Live, with a real Multi-Sampler
+already loaded on every pad and macros/colors/choke groups/mixer already
+configured as desired. Every pad's `SendingNote` is fixed at 60 (C3)
+regardless of which note triggers the pad (`ReceivingNote`, unique per pad),
+so every embedded Sampler's `MultiSamplePart`s are built on a single fixed
+root note (60) — see `PAD_ROOT_NOTE` in the script. The scripts only ever
+touch each pad's `MultiSampleMap/SampleParts` in place; they never clone
+devices or copy individual rack-level properties (macros, names, colors,
+`NumVisibleMacroControls`, etc.) from one file into another. That approach
+was tried first and kept missing fields (macro names live in sibling
+`MacroDisplayNames.N`/`MacroColor.N`/`MacroDefaults.N` arrays under
+`DrumGroupDevice`, not nested inside `MacroControls.N` — easy to miss).
+**If the donor rack itself needs to change** (different macro mapping, pad
+count, note layout, envelope settings), rebuild it in Ableton Live, export
+it, and copy the new file over `templates/sampler_drum_rack_template.adg` —
+don't try to patch it from a script.
+
+**Pad note range is fixed by the donor — do NOT remap `ReceivingNote` from a
+script.** Rewriting `ZoneSettings/ReceivingNote` does *not* reposition a Drum
+Rack pad in Live's grid; it detaches the chain and the pad loads **empty**.
+(Learned the hard way: a Shimmer & Shake build remapped every pad to 36+ to
+force a C1 start, and in Live every pad went blank — the fix was to stop
+touching `ReceivingNote`.) So scripts must fill the donor's existing pads at
+their native notes and leave `ReceivingNote` alone. The donor's 32 pads sit at
+`ReceivingNote` 61–92 (all `SendingNote` 60), so kits currently start at C#3
+and leave the low pads (36–60) empty below the kit — cosmetic, and the racks
+work. `build_rack()` in `create_shimmer_and_shake_kit.py` (and the other kit
+scripts) fills the donor's lowest pads first and deletes surplus pads, never
+changing a note. **To actually move the kit (e.g. start at C1 with nothing
+empty below), rebuild the donor in Ableton Live** with pads on the notes you
+want and re-export it over `templates/sampler_drum_rack_template.adg` — per the
+template rule above, note layout is a donor change, never a script patch.
+
+**Output:** kits are written to `SAMPLE_LIBRARY_ROOT / "Drum Racks"` (outside
+the repo, alongside the source library), not the repo's `output/` directory.
+The user has since moved the generated sets into the Ableton User Library
+(`.../User Library/Looping Presets/Instruments/Ableton/Perc/Damage Close` and
+`.../Damage Room` — note "Full" mic renamed "Room"); safe because sample
+references are absolute paths into the unmoved source library.
+
+### Close/Room Combined variant (2026-07)
+
+`scripts/create_damage_close_room_racks.py` builds the same kits (imported via
+`compose_all_kits()` from `create_variety_drum_rack.py` — kit definitions stay
+single-source) but every pad is a nested Instrument Rack with TWO Samplers:
+Close mic and Room ("Full") mic, crossfaded by the chain selector (selector 0 =
+pure Close, 127 = pure Room; the Close chain's selector zone fades out across
+0-126, Room's fades in across 1-127). The selector chains up to the Drum
+Rack's Macro 7 "Room", so one knob mixes every pad at once. Donor:
+`templates/close_room_drum_rack_template.adg`, hand-built by the user
+(2026-07-17), 32 pads at ReceivingNote 61-92, SendingNote 60. Chains are
+identified by their `BranchSelectorRange` crossfade values, never by order.
+Unlike the single-mic donor this one ships with real samples on all pads, so
+kits under 32 instruments get surplus pads cleared (SampleParts emptied, name
+blanked) — never left sounding the donor's Alfaias. Both mic folders share
+identical velocity centers library-wide (verified across all 732 instruments),
+so the two chains always switch layers at the same velocities; the takes
+themselves are independent autosampling passes (different RR ids), so a blend
+is two performances, not two mics of one hit. Output: one combined set in
+`.../User Library/Looping Presets/Instruments/Ableton/Perc/Damage Close-Room`.
+
+## Round-Robin Drum Racks (no velocity/note metadata)
+
+**Purpose:** build round-robin Drum Racks from "found sound" one-shot libraries
+whose filenames carry **no note and no velocity** — only numbered round-robin
+takes (e.g. Soundiron Rust 1). This is the sibling of the Sampler-Based Drum
+Rack Workflow above: same donor template and same "only swap each pad's
+`MultiSampleMap/SampleParts` in place" rule, but there are no velocity layers
+to build — each articulation becomes one pad whose takes are round-robin
+alternates over the full 1-127 velocity range, fixed on `PAD_ROOT_NOTE` (60).
+
+**Key file:** `scripts/create_rust_round_robin_racks.py`. `articulation_key()`
+reduces a filename stem to its articulation by stripping the trailing take
+suffix — an optional `_L`/`_R` channel marker (only Soundiron's Dumpster
+`Dmst_*` files use it; their `_L`/`_R` files are full stereo takes, kept as
+extra round robins, not split) followed by a `_<number>` take index. Samples
+sharing the result become one pad. Every articulation across the library is
+laid out in object order (objects alphabetical, articulations alphabetical
+within each) and packed into sequential full 32-pad racks
+(`Rust Round Robin NN.adg`), so each object's hits stay adjacent and no pads are
+wasted except at the tail of the last rack; `build_rack` prints each rack's
+object composition. Single-take pads are kept (valid one-shots) and their count
+reported per rack — nothing dropped silently. Each run calls `clean_previous()`
+to delete prior `Rust *.adg` output first, so re-runs leave a clean set.
+`SAMPLE_LIBRARY_ROOT` is set at the top of the file; **update it if the source
+library moves.**
+
+On top of the donor's defaults, `apply_sampler_params()` sets a small
+hand-tuned mapping (`SAMPLER_PARAMS`) on every pad's Sampler — lowpass cutoff
+~3.34 kHz with velocity→cutoff, and velocity→volume — so harder hits open up
+and get louder. These were dialed in by hand in Ableton on an example rack and
+transcribed as verbatim values; edit `SAMPLER_PARAMS` to retune. The shared
+donor template is left untouched, so the Damage workflow is unaffected.
+
+**Output:** same as above — `SAMPLE_LIBRARY_ROOT / "Drum Racks"`, outside the repo.
+
+## SonicCouture Electro-Acoustic DrumCell Racks
+
+**Purpose:** category-pure 32-pad DrumCell racks from the SonicCouture
+Electro-Acoustic one-shot export (181 kit folders of 12 single-velocity
+samples each, under `/Users/Shared/Music/Soundbanks/Ben Multisamples/
+Soniccouture/Electro Acoustic/{Dry, Electro Acoustic, Hybrid, Distorted}`).
+
+**Key file:** `scripts/create_electro_acoustic_racks.py` (`--plan` to preview).
+Kits parse to (machine, treatment) with export-typo normalization; each rack
+pairs two same-treatment kits ("EMI Crush - 606 + 808"), odd leftovers pool
+per category. Kit A fills notes 92..81, kit B 76..65 (same type→note offsets
+everywhere, so B-half clips transpose to A-halves by exactly 16); spare donor
+pads are deleted. Output subfolders mirror SonicCouture's snapshot numbering
+(`1 Dry Machines` … `4 Overdrive`) under the User Library
+`.../Drum/Prod/Electro Acoustic/`.
+
+**Donor:** `templates/electro_acoustic_drumcell_donor.adg` (copy of the old
+"606 808 EMI Crush" rack; same only-swap-sample-content rule as the other
+donor workflows). `beat_tools_to_drumcell.py` uses the same donor.
+
+**Known source glitches** (skipped with warnings, don't "fix" in the script):
+`Korg 55B PA Mic` folder is empty; `Korg 55B FatFace` 09-12 are zero-frame
+4KB shells; `Drumulator Dry` was never exported; ~37 filenames have mangled
+random-code suffixes (leading `<idx>-<Type>-V127-` fields are still valid).
+Re-exporting those from Kontakt would allow a rebuild to pick them up.
+
+**Pad placement:** `build_rack()` places each sample by its **slot number**
+(slot N → note 93−N in the top bank), not by its position in the scanned list.
+The two are identical for the four original categories — no kit there has a
+slot gap — but Boroughs drops middle slots, where positional fill would slide
+every later sound up a semitone onto the wrong pad. Keep it slot-indexed.
+
+## SonicCouture Boroughs DrumCell Racks
+
+**Purpose:** one rack per borough from the fifth snapshot category (100 kit
+folders under `.../Soniccouture/Electro Acoustic/Boroughs`, exported
+2026-07-18, WAV rather than AIFF). Unlike the (machine × treatment) grids of
+the other four categories, each borough is a self-contained named kit, so
+there is nothing to pair on — one borough, one rack, named for its snapshot.
+
+**Key file:** `scripts/create_boroughs_racks.py` (`--plan` to preview); reuses
+the donor, `scan_kit()` and `build_rack()` from `create_electro_acoustic_racks`.
+Each kit fills the top bank only — 01-Kick at note 92 through 12-Cowbell at 81
+— and every unused pad is deleted. Placement is by slot, so the note→drum-type
+map is identical across all 100 racks and a clip written for one borough
+triggers the same types in any other. Output: `5 Boroughs` alongside the other
+numbered subfolders.
+
+**Known source glitches** (pads left empty, reported not filled): 40 of the
+100 boroughs are missing a middle slot — 35 lack `08-Tom-Alt`, 3 lack
+`07-HiHat-Open`, and `Hexagon Projection` / `In Another Space` lack both
+`06-Tom-Hi` and `08-Tom-Alt`. Re-exporting those from Kontakt and re-running
+would fill the holes. The other never-exported category is `Focus Tuned`.
+
 ## Templates
 
 **Location:** `templates/`
 
 **Required templates:**
-- `input_rack.adg` - Drum rack template (32 pads, no samples)
+- `input_rack.adg` - Drum rack template (32 pads, no samples, DrumCell per pad)
 - `sampler-rack.adg` - Multi-Sampler template (no samples)
 - `simpler-template.adv` - Simpler template (no sample)
+- `sampler_drum_rack_template.adg` - Donor for the Sampler-based Drum Rack
+  workflow above (32 pads, each with an empty Multi-Sampler already loaded
+  and configured). Hand-built in Ableton Live, not generated — see above.
+- `close_room_drum_rack_template.adg` - Donor for the Close/Room combined
+  Damage workflow (32 pads, each a nested 2-chain Instrument Rack with
+  Close/Room Samplers crossfaded by chain selector). Hand-built in Ableton
+  Live — see above.
 
 **Creating templates:**
 1. Create empty device in Ableton Live
