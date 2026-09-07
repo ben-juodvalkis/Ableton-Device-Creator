@@ -45,7 +45,14 @@ from .drum_racks import DrumRackCreator, DrumRackModifier
 from .sampler import SamplerCreator, SimplerCreator
 
 # Macro mapping
-from .macro_mapping import DrumPadColorMapper, TransposeMapper, DRUM_COLORS
+from .macro_mapping import (
+    DrumPadColorMapper,
+    TransposeMapper,
+    DRUM_COLORS,
+    classify_rack,
+    unmap_drum_rack,
+    unmap_tree,
+)
 
 __all__ = [
     "__version__",
@@ -64,4 +71,7 @@ __all__ = [
     "DrumPadColorMapper",
     "TransposeMapper",
     "DRUM_COLORS",
+    "classify_rack",
+    "unmap_drum_rack",
+    "unmap_tree",
 ]

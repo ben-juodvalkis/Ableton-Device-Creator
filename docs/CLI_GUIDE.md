@@ -132,6 +132,41 @@ adc drum-rack remap MyRack.adg --shift 12 --scroll-shift 3
 
 ---
 
+### `adc drum-rack unmap`
+
+Remove every macro mapping from every Drum Rack under a folder.
+
+**Usage:**
+```bash
+adc drum-rack unmap ROOT --out OUT_DIR [OPTIONS]
+```
+
+**Options:**
+- `--out PATH` - Output tree; each unmapped rack is written at its relative path under it (required unless `--dry-run`)
+- `--dry-run` - Classify and report only; write nothing
+- `--report PATH` - Write a JSON report (per-file detail plus totals)
+- `--include-nested` - Also remove mappings owned by racks nested inside the pads (default: root rack only)
+- `--bake/--no-bake` - Write the macro-driven value into each unmapped parameter (default: bake)
+- `--overwrite` - Replace files that already exist under `--out`
+
+**What it does:**
+- Root Drum Racks: every `KeyMidi` block owned by the rack goes, each freed parameter takes the value its macro was driving (Live's behaviour on unmap), and the rack's `MacroDefaults` reset to -1. Macro names and positions stay.
+- Instrument Racks that contain a Drum Rack: reported, not modified.
+- Anything else (`.adv`, other racks): skipped and counted.
+- `ROOT` is never written to. Every written file is re-read and verified against its original (no `KeyMidi` left in scope, same element tree minus the removed blocks, same macro names, same pad and cell counts, gzip round-trip). A file that fails is dropped and listed; the run continues.
+
+**Examples:**
+```bash
+# See what would happen
+adc drum-rack unmap "Looping Presets/Instruments/Ableton" --dry-run
+
+# Write the unmapped tree beside the original, with a report
+adc drum-rack unmap "Looping Presets/Instruments/Ableton" \
+    --out "Looping Presets/Instruments/Ableton-unmapped" --report unmap-report.json
+```
+
+---
+
 ### `adc sampler create`
 
 Create a Multi-Sampler instrument from audio samples.

@@ -113,6 +113,35 @@ transpose.add_transpose_mapping(macro_index=15).save("MySampler_Transpose.adg")
 - Auto color pads by sample type
 - Add transpose controls to samplers
 - Preserve existing mappings
+- Remove every macro mapping from a Drum Rack (see below)
+
+### 🔓 Removing Macro Mappings
+
+```python
+from ableton_device_creator.core import decode_adg, encode_adg
+from ableton_device_creator.macro_mapping import classify_rack, unmap_drum_rack, verify_unmap
+
+xml = decode_adg("MyKit.adg")
+info = classify_rack(xml)          # root class, mapping counts, nested racks, macro names
+if info.is_drum_rack:
+    unmapped, report = unmap_drum_rack(xml)
+    assert verify_unmap(xml, unmapped, report) == []
+    encode_adg(unmapped, "MyKit-unmapped.adg")
+```
+
+`unmap_drum_rack` does what Live's own unmap does: it deletes every `KeyMidi` block
+owned by the rack, writes the value the macro was driving into each freed parameter
+(the stored value of a mapped parameter is ignored by Live and is often stale in
+generated kits), and resets the rack's `MacroDefaults` to -1. Macro names and
+positions stay. Mappings inside nested Instrument or Effect Racks belong to those
+racks and are left alone unless `include_nested=True`. Edits are string-level; the
+XML is never re-serialised, and the result is verified element by element against
+the original.
+
+Why remove mappings rather than re-point them: the Looping surface now owns every
+whole-kit gesture as a *virtual macro* that fans out to each pad's parameters by
+name (Looping ADR-428). A macro-held parameter is disabled in Live, so the kits must
+carry no mappings at all for the surface to write the pads directly.
 
 ### 🎹 Sampler & Simpler
 
@@ -163,6 +192,11 @@ adc drum-rack color MyKit.adg
 
 # Remap notes (shift up 1 octave)
 adc drum-rack remap MyKit.adg --shift 12
+
+# Remove every macro mapping from every Drum Rack under a folder (writes a parallel tree)
+adc drum-rack unmap "Looping Presets/Instruments/Ableton" --dry-run
+adc drum-rack unmap "Looping Presets/Instruments/Ableton" \
+    --out "Looping Presets/Instruments/Ableton-unmapped" --report unmap.json
 ```
 
 ### Sampler Commands

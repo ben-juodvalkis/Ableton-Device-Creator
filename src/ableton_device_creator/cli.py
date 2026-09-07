@@ -18,8 +18,8 @@ from . import __version__
 from .drum_racks import DrumRackCreator, DrumRackModifier
 from .sampler import SamplerCreator, SimplerCreator
 from .macro_mapping import DrumPadColorMapper
+from .macro_mapping.unmap_batch import FileResult, unmap_tree, write_report
 from .core import decode_adg, encode_adg
-
 
 # Global options
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -150,9 +150,7 @@ def drum_rack_create(samples_dir, output, template, layout, categorize, recursiv
 
 @drum_rack.command(name="color")
 @click.argument("device", type=click.Path(exists=True))
-@click.option(
-    "-o", "--output", type=click.Path(), help="Output file (default: overwrite input)"
-)
+@click.option("-o", "--output", type=click.Path(), help="Output file (default: overwrite input)")
 def drum_rack_color(device, output):
     """
     Apply color coding to drum rack pads.
@@ -195,12 +193,8 @@ def drum_rack_color(device, output):
 
 @drum_rack.command(name="remap")
 @click.argument("device", type=click.Path(exists=True))
-@click.option(
-    "-s", "--shift", type=int, required=True, help="Semitones to shift MIDI notes"
-)
-@click.option(
-    "-o", "--output", type=click.Path(), help="Output file (default: overwrite input)"
-)
+@click.option("-s", "--shift", type=int, required=True, help="Semitones to shift MIDI notes")
+@click.option("-o", "--output", type=click.Path(), help="Output file (default: overwrite input)")
 @click.option(
     "--scroll-shift",
     type=int,
@@ -249,6 +243,122 @@ def drum_rack_remap(device, shift, output, scroll_shift):
 
     except Exception as e:
         click.secho(f"Error: {e}", fg="red")
+        sys.exit(1)
+
+
+@drum_rack.command(name="unmap")
+@click.argument("root", type=click.Path(exists=True, file_okay=False))
+@click.option(
+    "--out",
+    "out_dir",
+    type=click.Path(file_okay=False),
+    help="Output tree; every unmapped rack is written at its relative path under it",
+)
+@click.option("--dry-run", is_flag=True, help="Classify and report only; write nothing")
+@click.option(
+    "--report", "report_path", type=click.Path(dir_okay=False), help="Write a JSON report here"
+)
+@click.option(
+    "--include-nested",
+    is_flag=True,
+    help="Also remove mappings owned by racks nested inside the pads (default: root rack only)",
+)
+@click.option(
+    "--bake/--no-bake",
+    default=True,
+    help="Write the macro-driven value into each unmapped parameter (default: bake)",
+)
+@click.option("--overwrite", is_flag=True, help="Replace files that already exist under --out")
+def drum_rack_unmap(root, out_dir, dry_run, report_path, include_nested, bake, overwrite):
+    """
+    Remove every macro mapping from every Drum Rack under ROOT.
+
+    Walks ROOT recursively. Root Drum Racks are unmapped: their KeyMidi blocks
+    go, each unmapped parameter takes the value its macro was driving, and the
+    rack's MacroDefaults reset to -1 (exactly what Live does). Macro names and
+    positions stay. Instrument Racks that contain a Drum Rack are reported, not
+    modified. Anything else is skipped and counted.
+
+    ROOT is never written to: outputs mirror the tree under --out. Every written
+    file is re-read and verified against its original; a file that fails is
+    dropped and listed, and the run continues.
+
+    Examples:
+
+      adc drum-rack unmap "Looping Presets/Instruments/Ableton" --dry-run
+
+      adc drum-rack unmap "Looping Presets/Instruments/Ableton" \\
+          --out "Looping Presets/Instruments/Ableton-unmapped" --report unmap.json
+    """
+    if not dry_run and out_dir is None:
+        click.secho("Error: --out is required unless --dry-run is given", fg="red")
+        sys.exit(2)
+
+    counter = {"n": 0}
+
+    def progress(result: FileResult) -> None:
+        counter["n"] += 1
+        if dry_run:
+            names = ", ".join(n for n in result.macro_names if not n.startswith("Macro "))
+            nested = ""
+            if result.nested_group_devices:
+                nested = " nested=%s (%d nested-owned KeyMidi)" % (
+                    ",".join("%s:%d" % kv for kv in sorted(result.nested_group_devices.items())),
+                    result.key_midi_nested,
+                )
+            click.echo(
+                "%-11s %-22s KeyMidi=%-5d %s%s  [%s]"
+                % (
+                    result.action,
+                    result.root_class,
+                    result.key_midi_total,
+                    result.path,
+                    nested,
+                    names,
+                )
+            )
+        elif result.action == "failed":
+            click.secho("FAILED  %s: %s" % (result.path, "; ".join(result.failures)), fg="red")
+        elif counter["n"] % 100 == 0:
+            click.echo("  %d files..." % counter["n"])
+
+    try:
+        report = unmap_tree(
+            root,
+            out_dir,
+            dry_run=dry_run,
+            include_nested=include_nested,
+            bake=bake,
+            overwrite=overwrite,
+            progress=progress,
+        )
+    except (ValueError, FileExistsError, FileNotFoundError) as e:
+        click.secho("Error: %s" % e, fg="red")
+        sys.exit(1)
+
+    click.echo("")
+    click.secho("Totals%s:" % (" (dry run)" if dry_run else ""), bold=True)
+    for key, value in report.totals.items():
+        click.echo("  %-32s %d" % (key, value))
+    failed = [f for f in report.files if f.action == "failed"]
+    if failed:
+        click.secho(
+            "\n%d file(s) failed verification and were not written:" % len(failed), fg="red"
+        )
+        for f in failed:
+            click.echo("  %s: %s" % (f.path, "; ".join(f.failures)))
+    unknown = [f for f in report.files if f.unknown_params]
+    if unknown:
+        click.secho(
+            "\n%d file(s) kept stored values for parameters with no verified curve:" % len(unknown),
+            fg="yellow",
+        )
+        for f in unknown[:20]:
+            click.echo("  %s: %s" % (f.path, ", ".join(f.unknown_params)))
+    if report_path:
+        write_report(report, report_path)
+        click.echo("\nReport written to %s" % report_path)
+    if failed:
         sys.exit(1)
 
 
@@ -517,9 +627,7 @@ def util_info(file):
         # Basic stats
         click.echo(f"  Compressed size: {file_path.stat().st_size / 1024:.1f} KB")
         click.echo(f"  Uncompressed size: {len(xml_content) / 1024:.1f} KB")
-        click.echo(
-            f"  Compression ratio: {file_path.stat().st_size / len(xml_content):.1%}"
-        )
+        click.echo(f"  Compression ratio: {file_path.stat().st_size / len(xml_content):.1%}")
 
         # Detect device type
         xml_str = xml_content.decode("utf-8")
