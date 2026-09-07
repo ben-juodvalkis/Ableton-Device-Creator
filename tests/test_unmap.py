@@ -332,7 +332,7 @@ def test_strip_key_midi_include_nested():
 
 def test_one_line_block_keeps_its_manual_and_indentation():
     out, _ = strip_key_midi(synthetic_drum_rack())
-    line = [l for l in out.split("\n") if "<MacroControls.0>" in l]
+    line = [ln for ln in out.split("\n") if "<MacroControls.0>" in ln]
     assert len(line) == 2  # root and nested
     inner = out[out.index("<InstrumentGroupDevice") :]
     block = inner[inner.index("<MacroControls.0>") : inner.index("</MacroControls.0>")]

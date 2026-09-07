@@ -287,8 +287,7 @@ def drum_rack_unmap(root, out_dir, dry_run, report_path, include_nested, bake, o
 
       adc drum-rack unmap "Looping Presets/Instruments/Ableton" --dry-run
 
-      adc drum-rack unmap "Looping Presets/Instruments/Ableton" \\
-          --out "Looping Presets/Instruments/Ableton-unmapped" --report unmap.json
+      adc drum-rack unmap "Looping Presets/Instruments/Ableton" --out "Looping Presets/Instruments/Ableton-unmapped" --report unmap.json
     """
     if not dry_run and out_dir is None:
         click.secho("Error: --out is required unless --dry-run is given", fg="red")
