@@ -539,9 +539,14 @@ def test_unmap_tree_mirrors_and_verifies(tmp_path):
     assert totals["key_midi_removed"] == 17
     assert totals["values_baked"] == 9 and totals["values_unknown_curve"] == 0
     assert totals["key_midi_left_nested"] == 1
-    written = sorted(p.relative_to(out) for p in out.rglob("*.adg"))
-    assert [str(p) for p in written] == ["Drum/Prod/Kit A.adg", "Perc/ Kit B.adg"]
-    assert not (out / "FX" / "Dual.adg").exists()
+    assert totals["copied_unchanged_adg"] == 2 and totals["copied_unchanged_other"] == 2
+    # a drop-in replacement: same file set, untouched files byte-identical with their mtimes
+    src_files = sorted(p.relative_to(root) for p in root.rglob("*") if p.is_file())
+    out_files = sorted(p.relative_to(out) for p in out.rglob("*") if p.is_file())
+    assert src_files == out_files
+    for rel in ("FX/Dual.adg", "Inst/Plain.adg", "Inst/Sampler.adv", "notes.txt"):
+        assert (out / rel).read_bytes() == (root / rel).read_bytes()
+        assert int((out / rel).stat().st_mtime) == int((root / rel).stat().st_mtime)
     unmapped = decode_adg(out / "Perc" / " Kit B.adg")
     assert "<KeyMidi" not in unmapped
     assert classify_rack(decode_adg(out / "Drum" / "Prod" / "Kit A.adg")).key_midi_root == 0
@@ -550,7 +555,36 @@ def test_unmap_tree_mirrors_and_verifies(tmp_path):
     path = write_report(report, tmp_path / "r" / "report.json")
     data = json.loads(path.read_text())
     assert data["totals"]["processed"] == 2
-    assert {f["path"]: f["action"] for f in data["files"]}["FX/Dual.adg"] == "nested-only"
+    by_path = {f["path"]: f for f in data["files"]}
+    assert by_path["FX/Dual.adg"]["action"] == "nested-only" and by_path["FX/Dual.adg"]["copied"]
+    assert not by_path["Perc/ Kit B.adg"]["copied"]
+
+
+def test_unmap_tree_without_copying(tmp_path):
+    root, out = tmp_path / "src", tmp_path / "out"
+    make_tree(root)
+    report = unmap_tree(root, out, copy_unchanged=False)
+    assert report.totals["copied_unchanged_adg"] == 0
+    assert report.totals["copied_unchanged_other"] == 0
+    written = sorted(str(p.relative_to(out)) for p in out.rglob("*") if p.is_file())
+    assert written == ["Drum/Prod/Kit A.adg", "Perc/ Kit B.adg"]
+
+
+def test_unmap_tree_copies_a_failed_file_unchanged(tmp_path, monkeypatch):
+    from ableton_device_creator.macro_mapping import unmap_batch
+
+    def boom(xml, include_nested=False, bake=True):
+        raise RuntimeError("simulated")
+
+    monkeypatch.setattr(unmap_batch, "unmap_drum_rack", boom)
+    root, out = tmp_path / "src", tmp_path / "out"
+    make_tree(root)
+    report = unmap_tree(root, out)
+    assert report.totals["failed"] == 2 and report.totals["processed"] == 0
+    failed = [f for f in report.files if f.action == "failed"]
+    assert all(f.copied and f.output is None for f in failed)
+    assert all("simulated" in f.failures[0] for f in failed)
+    assert (out / "Perc" / " Kit B.adg").read_bytes() == (root / "Perc" / " Kit B.adg").read_bytes()
 
 
 def test_unmap_tree_refuses_unsafe_output(tmp_path):
@@ -597,10 +631,18 @@ def test_cli_unmap(tmp_path):
     )
     assert result.exit_code == 0, result.output
     assert (out / "Perc" / " Kit B.adg").exists()
+    assert (out / "Inst" / "Sampler.adv").exists()
     assert json.loads((tmp_path / "r.json").read_text())["totals"]["key_midi_removed"] == 17
 
     result = runner.invoke(main, ["drum-rack", "unmap", str(root)])
     assert result.exit_code == 2
+
+    out2 = tmp_path / "out2"
+    result = runner.invoke(
+        main, ["drum-rack", "unmap", str(root), "--out", str(out2), "--no-copy-unchanged"]
+    )
+    assert result.exit_code == 0, result.output
+    assert not (out2 / "Inst" / "Sampler.adv").exists()
     del click
 
 

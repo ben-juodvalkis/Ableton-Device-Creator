@@ -148,12 +148,13 @@ adc drum-rack unmap ROOT --out OUT_DIR [OPTIONS]
 - `--include-nested` - Also remove mappings owned by racks nested inside the pads (default: root rack only)
 - `--bake/--no-bake` - Write the macro-driven value into each unmapped parameter (default: bake)
 - `--overwrite` - Replace files that already exist under `--out`
+- `--copy-unchanged/--no-copy-unchanged` - Copy every file that is not unmapped (other racks, `.adv` presets, a rack that failed verification) into `--out` unchanged, so `--out` is a drop-in replacement for `ROOT` (default: copy)
 
 **What it does:**
 - Root Drum Racks: every `KeyMidi` block owned by the rack goes, each freed parameter takes the value its macro was driving (Live's behaviour on unmap), and the rack's `MacroDefaults` reset to -1. Macro names and positions stay.
-- Instrument Racks that contain a Drum Rack: reported, not modified.
-- Anything else (`.adv`, other racks): skipped and counted.
-- `ROOT` is never written to. Every written file is re-read and verified against its original (no `KeyMidi` left in scope, same element tree minus the removed blocks, same macro names, same pad and cell counts, gzip round-trip). A file that fails is dropped and listed; the run continues.
+- Instrument Racks that contain a Drum Rack: reported, not modified (copied unchanged).
+- Anything else (`.adv`, other racks): skipped and counted (copied unchanged).
+- `ROOT` is never written to. Every unmapped file is re-read and verified against its original (no `KeyMidi` left in scope, same element tree minus the removed blocks, same macro names, same pad and cell counts, gzip round-trip). A file that fails is listed and copied unchanged instead; the run continues.
 
 **Examples:**
 ```bash

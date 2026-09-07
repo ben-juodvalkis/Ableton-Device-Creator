@@ -283,7 +283,7 @@ This project prioritizes **production-proven code over extensive test coverage**
 - `unmap_drum_rack(xml) -> (xml, UnmapReport)` - strip root-owned `KeyMidi`, bake macro-driven values into `Manual`, reset root `MacroDefaults` to -1
 - `strip_key_midi`, `reset_macro_defaults`, `bake_plan` - the individual steps
 - `verify_unmap(original, result, report)` - element-by-element check of the result against the original
-- `unmap_tree(root, out_dir, ...)` - batch runner behind `adc drum-rack unmap`; never writes into `root`
+- `unmap_tree(root, out_dir, ...)` - batch runner behind `adc drum-rack unmap`; never writes into `root`, copies every untouched file into `out_dir` so the output tree can replace `root` whole
 
 Rules baked into the module, all measured on the library (2026-09-07):
 - Edits are string-level (anchored regexes on the decoded XML). Never re-serialise a Live 12 file through ElementTree for writing: it parses but will not load. ElementTree is read-only here.

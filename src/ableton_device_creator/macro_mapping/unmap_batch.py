@@ -7,6 +7,7 @@ is not left behind and is listed in the report while the run continues.
 """
 
 import json
+import shutil
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -48,6 +49,7 @@ class FileResult:
     macro_defaults_changed: int = 0
     failures: List[str] = field(default_factory=list)
     output: Optional[str] = None
+    copied: bool = False  # the original was copied unchanged into the output tree
 
 
 @dataclass
@@ -59,8 +61,10 @@ class TreeReport:
     dry_run: bool
     include_nested: bool
     bake: bool
+    copy_unchanged: bool = True
     files: List[FileResult] = field(default_factory=list)
     other_files: Dict[str, int] = field(default_factory=dict)
+    copied_other: int = 0
 
     @property
     def totals(self) -> Dict[str, int]:
@@ -97,6 +101,8 @@ class TreeReport:
                 for f in self.files
                 if f.root_class == "DrumGroupDevice" and f.nested_group_devices
             ),
+            "copied_unchanged_adg": sum(1 for f in self.files if f.copied),
+            "copied_unchanged_other": self.copied_other,
         }
         for cls, n in sorted(skipped_by_class.items()):
             totals["skipped_%s" % (cls or "unknown")] = n
@@ -111,6 +117,7 @@ class TreeReport:
             "dry_run": self.dry_run,
             "include_nested": self.include_nested,
             "bake": self.bake,
+            "copy_unchanged": self.copy_unchanged,
             "totals": self.totals,
             "files": [asdict(f) for f in self.files],
         }
@@ -155,6 +162,7 @@ def unmap_tree(
     include_nested: bool = False,
     bake: bool = True,
     overwrite: bool = False,
+    copy_unchanged: bool = True,
     progress: Optional[Callable[[FileResult], None]] = None,
 ) -> TreeReport:
     """Unmap every root Drum Rack under ``root`` into the same relative path under ``out_dir``.
@@ -162,8 +170,11 @@ def unmap_tree(
     ``dry_run`` classifies and reports without writing. ``include_nested`` also
     removes mappings owned by racks nested inside the pads. ``bake`` writes the
     macro-driven value into each unmapped parameter (Live's behaviour). Existing
-    output files stop the run unless ``overwrite`` is set. ``progress`` is called
-    with each file's result as it completes.
+    output files stop the run unless ``overwrite`` is set. With ``copy_unchanged``
+    every file that is not unmapped (other racks, ``.adv`` presets, a rack that
+    failed verification) is copied into ``out_dir`` byte for byte, so the output
+    tree is a drop-in replacement for ``root``. ``progress`` is called with each
+    ``.adg`` file's result as it completes.
     """
     root = Path(root)
     if not root.is_dir():
@@ -175,15 +186,17 @@ def unmap_tree(
         dry_run=dry_run,
         include_nested=include_nested,
         bake=bake,
+        copy_unchanged=copy_unchanged,
     )
 
     files = sorted(p for p in root.rglob("*") if p.is_file())
     adg_files = [p for p in files if p.suffix.lower() == ".adg"]
-    others = Counter(p.suffix.lower() or "(none)" for p in files if p.suffix.lower() != ".adg")
-    report.other_files = dict(others)
+    other_files = [p for p in files if p.suffix.lower() != ".adg"]
+    report.other_files = dict(Counter(p.suffix.lower() or "(none)" for p in other_files))
 
     if not dry_run and not overwrite:
-        existing = [p for p in adg_files if (out_path / p.relative_to(root)).exists()]
+        candidates = files if copy_unchanged else adg_files
+        existing = [p for p in candidates if (out_path / p.relative_to(root)).exists()]
         if existing:
             raise FileExistsError(
                 "%d output files already exist under %s (first: %s); pass overwrite to replace them"
@@ -192,13 +205,26 @@ def unmap_tree(
 
     for path in adg_files:
         rel = str(path.relative_to(root))
-        result = _process_file(
-            path, rel, out_path / path.relative_to(root), dry_run, include_nested, bake
-        )
+        target = out_path / path.relative_to(root)
+        result = _process_file(path, rel, target, dry_run, include_nested, bake)
+        if not dry_run and copy_unchanged and result.output is None:
+            _copy_unchanged(path, target)
+            result.copied = True
         report.files.append(result)
         if progress is not None:
             progress(result)
+
+    if not dry_run and copy_unchanged:
+        for path in other_files:
+            _copy_unchanged(path, out_path / path.relative_to(root))
+        report.copied_other = len(other_files)
     return report
+
+
+def _copy_unchanged(source: Path, target: Path) -> None:
+    """Copy a file byte for byte, keeping its timestamps (Looping fingerprints files)."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, target)
 
 
 def _process_file(

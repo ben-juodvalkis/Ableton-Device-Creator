@@ -269,7 +269,17 @@ def drum_rack_remap(device, shift, output, scroll_shift):
     help="Write the macro-driven value into each unmapped parameter (default: bake)",
 )
 @click.option("--overwrite", is_flag=True, help="Replace files that already exist under --out")
-def drum_rack_unmap(root, out_dir, dry_run, report_path, include_nested, bake, overwrite):
+@click.option(
+    "--copy-unchanged/--no-copy-unchanged",
+    default=True,
+    help=(
+        "Copy every file that is not unmapped (other racks, .adv presets) into --out unchanged, "
+        "so --out is a drop-in replacement for ROOT (default: copy)"
+    ),
+)
+def drum_rack_unmap(
+    root, out_dir, dry_run, report_path, include_nested, bake, overwrite, copy_unchanged
+):
     """
     Remove every macro mapping from every Drum Rack under ROOT.
 
@@ -279,9 +289,11 @@ def drum_rack_unmap(root, out_dir, dry_run, report_path, include_nested, bake, o
     positions stay. Instrument Racks that contain a Drum Rack are reported, not
     modified. Anything else is skipped and counted.
 
-    ROOT is never written to: outputs mirror the tree under --out. Every written
-    file is re-read and verified against its original; a file that fails is
-    dropped and listed, and the run continues.
+    ROOT is never written to: outputs mirror the tree under --out, and every
+    file that is not unmapped is copied there unchanged, so --out can replace
+    ROOT as a whole. Every unmapped file is re-read and verified against its
+    original; a file that fails is listed and copied unchanged instead, and the
+    run continues.
 
     Examples:
 
@@ -329,6 +341,7 @@ def drum_rack_unmap(root, out_dir, dry_run, report_path, include_nested, bake, o
             include_nested=include_nested,
             bake=bake,
             overwrite=overwrite,
+            copy_unchanged=copy_unchanged,
             progress=progress,
         )
     except (ValueError, FileExistsError, FileNotFoundError) as e:
