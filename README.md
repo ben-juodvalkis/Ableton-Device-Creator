@@ -269,10 +269,15 @@ Ableton-Device-Creator/
 │   ├── sampler_example.py
 │   └── macro_mapping_example.py
 │
+├── scripts/                        # Per-library conversion scripts
+│   ├── multisample_utils.py        # Shared sampler/velocity helpers
+│   └── create_*.py                 # One script per sample library
+│
 ├── templates/                      # Device templates
 │   ├── input_rack.adg              # Drum rack template
 │   ├── sampler-rack.adg            # Sampler template
-│   └── simpler-template.adv        # Simpler template
+│   ├── simpler-template.adv        # Simpler template
+│   └── *_donor.adg                 # Donor racks for sample-swap workflows
 │
 ├── docs/                           # Documentation
 │   ├── CLI_GUIDE.md                # CLI reference
@@ -280,6 +285,35 @@ Ableton-Device-Creator/
 │
 └── archive-v2-scripts/             # V2 reference code
 ```
+
+---
+
+## Library Conversion Scripts
+
+`scripts/` holds one script per sample library — the working end of this repo.
+Each turns a specific vendor export (SonicCouture, Soundiron, Spitfire, …) into
+finished Ableton devices, and encodes what that library's export actually looks
+like: its filename convention, its velocity-layer scheme, and its export
+glitches.
+
+```bash
+# Each script is standalone; most support --plan to preview without writing
+python3 scripts/create_electro_acoustic_racks.py --plan
+python3 scripts/create_boroughs_racks.py
+```
+
+Two conventions matter when adding one:
+
+- **Import flat.** `multisample_utils.py` (shared velocity/pitch-zone helpers)
+  is imported bare — `from multisample_utils import ...` — by most scripts, and
+  several scripts import each other by module name. The directory is flat on
+  purpose; subfolders would break those imports.
+- **Report, don't repair.** Vendor exports have gaps (empty folders, zero-frame
+  files, missing slots). Surface them as warnings so they can be re-exported —
+  never silently drop or interpolate them.
+
+Per-library specifics — source paths, note layouts, known export glitches — are
+documented in [CLAUDE.md](CLAUDE.md).
 
 ---
 
