@@ -278,6 +278,31 @@ This project prioritizes **production-proven code over extensive test coverage**
 - `DrumPadColorMapper` - Auto-color drum pads by type
 - `TransposeMapper` - Add transpose control to samplers
 
+**Unmapping (`unmap.py`, `unmap_batch.py`):**
+- `classify_rack(xml) -> RackInfo` - root class, KeyMidi counts (root-owned vs nested), nested racks, macro names
+- `unmap_drum_rack(xml) -> (xml, UnmapReport)` - strip root-owned `KeyMidi`, bake macro-driven values into `Manual`, reset root `MacroDefaults` to -1
+- `strip_key_midi`, `reset_macro_defaults`, `bake_plan` - the individual steps
+- `verify_unmap(original, result, report)` - element-by-element check of the result against the original
+- `unmap_tree(root, out_dir, ...)` - batch runner behind `adc drum-rack unmap`; never writes into `root`, copies every untouched file into `out_dir` so the output tree can replace `root` whole
+
+Rules baked into the module, all measured on the library (2026-09-07):
+- Edits are string-level (anchored regexes on the decoded XML). Never re-serialise a Live 12 file through ElementTree for writing: it parses but will not load. ElementTree is read-only here.
+- A `KeyMidi` addresses the macros of the innermost rack around it. Mappings inside a nested rack's chains belong to that rack and stay (Live's unmap on the outer rack behaves the same way); mappings chaining a root macro to a nested rack's macro are root-owned and go.
+- Live ignores the stored `Manual` of a mapped parameter and, on unmap, writes the macro-driven value in. Generated kits have stale stored values (attack 0.1 ms where the macro produces 353 ms, transpose 32 where it produces 0), so a plain strip would change the sound. `CURVES` holds the per-parameter interpolation (linear, log, t², t³, t⁵, stepped, switch, fader) with the evidence for each; a parameter with no verified curve keeps its stored value and is reported.
+- `KeyMidi` blocks come in two textual forms: Live's multi-line block, and a one-line block written by older scripts with the `<Manual>` on the same line. Both are handled.
+- Why the mappings are removed rather than re-pointed: the Looping surface (ADR-428) owns every whole-kit gesture as a virtual macro that fans out to each pad's parameters by name; a macro-held parameter is disabled in Live, so the kits must carry no mappings.
+
+**Hiding macros (`hide_macros.py`, `hide_macros_batch.py`):**
+- `hide_macros(xml) -> (xml, HideReport)` - on the root Drum Rack only: `AreMacroControlsVisible` to false, `MacroDisplayNames.N` back to `Macro N+1`
+- `root_device_span(xml)` - `(tag, start, end)` over the text, `end` being the first *nested* group device, so edits cannot reach into the pads
+- `verify_hide(original, result, report)` - result parses, text outside the root span is byte-identical, inside it only those two fields moved, macro values survive
+- `hide_macros_tree(root, out_dir=None, in_place=False, ...)` - batch runner behind `adc drum-rack hide-macros`; in place it writes a `.adc-tmp.adg` sibling and `os.replace`s it, so a failure never leaves a half-written preset
+
+The cosmetic counterpart to unmapping, measured on a Live 12.4.15 before/after pair (2026-09-08):
+- Those two fields are the whole gesture. Live's resave of the same file also rewrote `MacroDefaults` (from -1 to the current macro values), `RoundRobinRandomSeed`, sample `RelativePath`s, `Upper/LowerDisplayString` and a Simpler range - all incidental to the resave and to the file having moved, none of it reproduced.
+- `NumVisibleMacroControls` does *not* change: it is how many knobs the panel would show, not whether the panel is shown.
+- Scope is the root device only. Nested racks inside the pads keep their names and panel state, and Instrument Rack presets are skipped whole - the Looping surface drives kits, so only kits need a bare front panel.
+
 **Color Scheme:**
 - Kicks: Orange (index 60)
 - Snares: Red (index 59)
@@ -292,7 +317,7 @@ This project prioritizes **production-proven code over extensive test coverage**
 **Purpose:** Terminal interface for all features
 **Dependencies:** `click>=8.0.0` (optional)
 **Commands:**
-- `adc drum-rack create|color|remap`
+- `adc drum-rack create|color|remap|unmap|hide-macros`
 - `adc sampler create`
 - `adc simpler create`
 - `adc util decode|encode|info`
