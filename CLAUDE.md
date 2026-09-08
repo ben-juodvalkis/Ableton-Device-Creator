@@ -299,13 +299,24 @@ than guessed at. Reproduces Live's output byte for byte apart from two fields
 incidental to any resave: `RoundRobinRandomSeed` (re-rolled) and an off
 Shaper's slot payload (dropped).
 
-A pad is left alone, with a reason, unless its wrapper is a plain pass-through:
-one chain, no return chains, unity chain mixer, full key and velocity range,
+A pad is left alone, with a reason, unless its wrapper adds nothing of its own:
+one chain, no return chains, full key and velocity range, centred pan, unmuted,
 nothing soloed. Two parallel chains spliced into one series chain would change
-the sound, so multi-chain racks (the Close/Room donor, for one) are refused,
-as are nested Drum Racks. The chain mixer's own mappings die with the chain and
-are counted separately (`key_midi_dropped_with_chain`) - at unity nothing
-audible is lost, but the macro that rode the pad's level is gone.
+the sound, so multi-chain racks (the Close/Room donor, for one) are refused, as
+are nested Drum Racks.
+
+**Chain level is the one deliberate departure from Live.** Live discards the
+chain fader; `ungroup` folds its gain into the pad's own fader instead, which is
+exact - two faders in series multiply, and `AudioBranchMixerDevice/Volume` is the
+same linear gain on both (range 0.0003162277571..1.99526238, i.e. -70..+6 dB,
+identical across all 1863 unmapped instances measured in the library). The pad is
+refused only when the fold cannot be done: no pad fader, a macro-mapped pad fader
+(Live ignores a mapped parameter's stored value, so the write would do nothing),
+or a product outside that range. `--no-fold-chain-volume` reproduces Live.
+
+The chain mixer's own *mappings* still die with the chain and are counted
+separately (`key_midi_dropped_with_chain`): the level survives, but the macro
+that rode it is gone.
 
 ### `sampler/` - Sampler Creation
 
