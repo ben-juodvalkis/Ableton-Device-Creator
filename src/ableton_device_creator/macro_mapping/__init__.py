@@ -17,6 +17,14 @@ from .unmap import (
     verify_unmap,
 )
 from .unmap_batch import FileResult, TreeReport, unmap_tree, write_report
+from .hide_macros import (
+    HideReport,
+    default_macro_name,
+    hide_macros,
+    root_device_span,
+    verify_hide,
+)
+from .hide_macros_batch import HideResult, HideTreeReport, hide_macros_tree
 
 __all__ = [
     "DrumPadColorMapper",
@@ -35,4 +43,13 @@ __all__ = [
     "TreeReport",
     "unmap_tree",
     "write_report",
+    # Hide macros
+    "HideReport",
+    "HideResult",
+    "HideTreeReport",
+    "default_macro_name",
+    "hide_macros",
+    "hide_macros_tree",
+    "root_device_span",
+    "verify_hide",
 ]

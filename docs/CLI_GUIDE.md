@@ -168,6 +168,41 @@ adc drum-rack unmap "Looping Presets/Instruments/Ableton" \
 
 ---
 
+### `adc drum-rack hide-macros`
+
+Hide the macro panel and clear custom macro names on every Drum Rack under a folder.
+
+**Usage:**
+```bash
+adc drum-rack hide-macros ROOT (--in-place | --out OUT_DIR) [OPTIONS]
+```
+
+**Options:**
+- `--in-place` - Rewrite the files under `ROOT` (mutually exclusive with `--out`)
+- `--out PATH` - Output tree; each edited rack is written at its relative path under it
+- `--dry-run` - Classify and report only; write nothing
+- `--report PATH` - Write a JSON report (per-file detail plus totals)
+- `--overwrite` - Replace files that already exist under `--out`
+- `--copy-unchanged/--no-copy-unchanged` - Copy every file that is not edited (Instrument Racks, `.adv` presets) into `--out` unchanged, so `--out` is a drop-in replacement for `ROOT` (default: copy)
+
+**What it does:**
+- Root Drum Racks: `AreMacroControlsVisible` becomes false and `MacroDisplayNames.0..15` go back to `Macro 1`..`Macro 16`.
+- Nothing else moves: macro values, macro positions, `NumVisibleMacroControls`, mappings, pads and every nested rack are left exactly as they were.
+- Instrument Rack presets and anything else: skipped and counted.
+- Every edited file is re-read and verified against its original (parses, byte-identical outside the root device, only those two fields changed inside it, macro values intact, gzip round-trip). A file that fails is listed and left as it was; the run continues. In place, each file is written to a temporary sibling and moved over the original.
+
+**Examples:**
+```bash
+# See what would happen, and which custom names would go
+adc drum-rack hide-macros "Looping Presets/Instruments/Ableton" --dry-run
+
+# Rewrite the library in place, with a report
+adc drum-rack hide-macros "Looping Presets/Instruments/Ableton" \
+    --in-place --report hide-macros-report.json
+```
+
+---
+
 ### `adc sampler create`
 
 Create a Multi-Sampler instrument from audio samples.

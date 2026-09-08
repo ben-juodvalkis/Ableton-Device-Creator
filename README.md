@@ -143,6 +143,25 @@ whole-kit gesture as a *virtual macro* that fans out to each pad's parameters by
 name (Looping ADR-428). A macro-held parameter is disabled in Live, so the kits must
 carry no mappings at all for the surface to write the pads directly.
 
+### 🙈 Hiding the Macro Panel
+
+```python
+from ableton_device_creator.core import decode_adg, encode_adg
+from ableton_device_creator.macro_mapping import hide_macros, verify_hide
+
+xml = decode_adg("MyKit.adg")
+hidden, report = hide_macros(xml)   # no-op unless the root device is a Drum Rack
+if report.changed:
+    assert verify_hide(xml, hidden, report) == []
+    encode_adg(hidden, "MyKit.adg")
+```
+
+The cosmetic counterpart to unmapping: on the *root* Drum Rack only, the macro
+panel folds away (`AreMacroControlsVisible`) and the custom macro names go back to
+`Macro 1`..`Macro 16`. Macro values, positions, mappings, pads and every rack
+nested in a pad are untouched, and Instrument Rack presets are skipped entirely.
+Use `hide_macros_tree(root, in_place=True)` to sweep a whole library.
+
 ### 🎹 Sampler & Simpler
 
 ```python
