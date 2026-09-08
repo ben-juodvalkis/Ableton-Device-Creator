@@ -44,6 +44,7 @@ class UngroupResult:
     key_midi_removed: int = 0
     key_midi_dropped_with_chain: int = 0
     key_midi_kept: int = 0
+    volumes_folded: int = 0
     ranges_reset: int = 0
     ranges_left: List[str] = field(default_factory=list)
     skip_reasons: Dict[str, int] = field(default_factory=dict)
@@ -62,6 +63,7 @@ class UngroupTreeReport:
     dry_run: bool
     in_place: bool
     copy_unchanged: bool = True
+    fold_volume: bool = True
     files: List[UngroupResult] = field(default_factory=list)
     other_files: Dict[str, int] = field(default_factory=dict)
     copied_other: int = 0
@@ -82,6 +84,7 @@ class UngroupTreeReport:
             "mappings_removed": sum(f.key_midi_removed for f in self.files),
             "mappings_dropped_with_chain": sum(f.key_midi_dropped_with_chain for f in self.files),
             "mappings_kept": sum(f.key_midi_kept for f in self.files),
+            "chain_volumes_folded": sum(f.volumes_folded for f in self.files),
             "ranges_reset": sum(f.ranges_reset for f in self.files),
             "copied_unchanged_adg": sum(1 for f in self.files if f.copied),
             "copied_unchanged_other": self.copied_other,
@@ -111,6 +114,7 @@ class UngroupTreeReport:
             "dry_run": self.dry_run,
             "in_place": self.in_place,
             "copy_unchanged": self.copy_unchanged,
+            "fold_volume": self.fold_volume,
             "totals": self.totals,
             "ranges_left_stored": self.ranges_left,
             "files": [asdict(f) for f in self.files],
@@ -143,6 +147,7 @@ def ungroup_tree(
     in_place: bool = False,
     overwrite: bool = False,
     copy_unchanged: bool = True,
+    fold_volume: bool = True,
     progress: Optional[Callable[[UngroupResult], None]] = None,
 ) -> UngroupTreeReport:
     """Dissolve every pad's nested rack in every Drum Rack under ``root``.
@@ -158,7 +163,7 @@ def ungroup_tree(
     """
     root = Path(root)
     if root.is_file():
-        return _single_file(root, out_dir, dry_run, in_place, overwrite, progress)
+        return _single_file(root, out_dir, dry_run, in_place, overwrite, fold_volume, progress)
     if not root.is_dir():
         raise FileNotFoundError("source tree not found: %s" % root)
     out_path = _check_out_dir(
@@ -170,6 +175,7 @@ def ungroup_tree(
         dry_run=dry_run,
         in_place=in_place,
         copy_unchanged=copy_unchanged and not in_place,
+        fold_volume=fold_volume,
     )
 
     files = sorted(p for p in root.rglob("*") if p.is_file())
@@ -189,7 +195,7 @@ def ungroup_tree(
     for path in adg_files:
         rel = str(path.relative_to(root))
         target = out_path / path.relative_to(root)
-        result = _process_file(path, rel, target, dry_run, in_place)
+        result = _process_file(path, rel, target, dry_run, in_place, fold_volume)
         if report.copy_unchanged and not dry_run and result.output is None:
             _copy_unchanged(path, target)
             result.copied = True
@@ -210,6 +216,7 @@ def _single_file(
     dry_run: bool,
     in_place: bool,
     overwrite: bool,
+    fold_volume: bool,
     progress: Optional[Callable[[UngroupResult], None]],
 ) -> UngroupTreeReport:
     """One ``.adg`` in, one out. ``out_dir`` may be a directory or a target file."""
@@ -234,8 +241,9 @@ def _single_file(
         dry_run=dry_run,
         in_place=in_place,
         copy_unchanged=False,
+        fold_volume=fold_volume,
     )
-    result = _process_file(path, path.name, target, dry_run, in_place)
+    result = _process_file(path, path.name, target, dry_run, in_place, fold_volume)
     report.files.append(result)
     if progress is not None:
         progress(result)
@@ -249,11 +257,11 @@ def _copy_unchanged(source: Path, target: Path) -> None:
 
 
 def _process_file(
-    path: Path, rel: str, target: Path, dry_run: bool, in_place: bool
+    path: Path, rel: str, target: Path, dry_run: bool, in_place: bool, fold_volume: bool = True
 ) -> UngroupResult:
     try:
         xml = decode_adg(path)
-        text, report = ungroup_pads(xml)
+        text, report = ungroup_pads(xml, fold_volume=fold_volume)
     except Exception as e:  # noqa: BLE001 - a broken file must not stop the run
         return UngroupResult(path=rel, action=FAILED, failures=["%s: %s" % (type(e).__name__, e)])
 
@@ -268,6 +276,7 @@ def _process_file(
         key_midi_removed=report.key_midi_removed,
         key_midi_dropped_with_chain=sum(p.key_midi_dropped_with_chain for p in report.pads),
         key_midi_kept=sum(p.key_midi_kept for p in report.pads),
+        volumes_folded=sum(1 for p in report.pads if p.chain_volume_folded is not None),
         ranges_reset=report.ranges_reset,
         ranges_left=report.ranges_left,
         skip_reasons=dict(Counter(p.skipped for p in report.pads if p.skipped)),

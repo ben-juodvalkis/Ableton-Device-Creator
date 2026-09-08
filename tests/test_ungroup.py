@@ -222,21 +222,124 @@ def test_a_second_chain_stops_the_pad():
     assert report.pads[2].skipped == "rack has 2 chains; only a single chain can be lifted"
 
 
-def test_a_non_unity_chain_mixer_stops_the_pad():
+CHAIN_MIXER = """\t\t\t\t\t<MixerPreset>
+\t\t\t\t\t\t<AbletonDevicePreset>
+\t\t\t\t\t\t\t<Device>
+\t\t\t\t\t\t\t\t<AudioBranchMixerDevice Id="0">
+\t\t\t\t\t\t\t\t\t<Volume>
+\t\t\t\t\t\t\t\t\t\t<Manual Value="%s" />
+\t\t\t\t\t\t\t\t\t</Volume>
+\t\t\t\t\t\t\t\t</AudioBranchMixerDevice>
+\t\t\t\t\t\t\t</Device>
+\t\t\t\t\t\t</AbletonDevicePreset>
+\t\t\t\t\t</MixerPreset>
+\t\t\t\t</InstrumentBranchPreset>"""
+
+PAD_MIXER = """\t\t<MixerPreset>
+\t\t\t<AbletonDevicePreset>
+\t\t\t\t<Device>
+\t\t\t\t\t<AudioBranchMixerDevice Id="0">
+\t\t\t\t\t\t<Volume>
+%s\t\t\t\t\t\t\t<Manual Value="%s" />
+\t\t\t\t\t\t</Volume>
+\t\t\t\t\t</AudioBranchMixerDevice>
+\t\t\t\t</Device>
+\t\t\t</AbletonDevicePreset>
+\t\t</MixerPreset>
+\t\t</DrumBranchPreset>"""
+
+PAD_FADER_KEY_MIDI = (
+    '\t\t\t\t\t\t\t<KeyMidi><PersistentKeyString Value="" /><IsNote Value="false" />'
+    '<Channel Value="16" /><NoteOrController Value="6" />'
+    '<LowerRangeNote Value="-1" /><UpperRangeNote Value="-1" />'
+    '<ControllerMapMode Value="0" /></KeyMidi>\n'
+)
+
+
+def kit_with_faders(chain: str, pad: str = None, pad_mapped: bool = False) -> str:
+    """The nested-rack pad, given a chain fader and optionally a pad fader of its own."""
+    xml = synthetic_drum_rack(with_nested=True).replace(
+        "\t\t\t\t</InstrumentBranchPreset>", CHAIN_MIXER % chain
+    )
+    if pad is not None:
+        block = PAD_MIXER % (PAD_FADER_KEY_MIDI if pad_mapped else "", pad)
+        at = xml.rindex("\t\t</DrumBranchPreset>")
+        xml = xml[:at] + block + xml[at + len("\t\t</DrumBranchPreset>") :]
+    return xml
+
+
+def test_a_chain_fader_is_folded_into_the_pads_own():
+    xml = kit_with_faders(chain="0.5", pad="0.8")
+    out, report = ungroup_pads(xml)
+
+    plan = report.pads[2]
+    assert not plan.skipped and report.ungrouped == 1
+    assert plan.chain_volume_folded == 0.5
+    assert plan.pad_volume == ("0.8", "0.400000006")  # 0.8 x 0.5, as Live stores it
+
+    pad = pads(out)[2]
+    fader = pad.find("MixerPreset/.//AudioBranchMixerDevice/Volume/Manual")
+    assert fader.get("Value") == "0.400000006"
+    assert not verify_ungroup(xml, out, report)
+
+
+def test_a_unity_chain_fader_leaves_the_pad_fader_alone():
+    xml = kit_with_faders(chain="1", pad="0.8")
+    out, report = ungroup_pads(xml)
+
+    assert report.pads[2].chain_volume_folded is None
+    assert (
+        pads(out)[2].find("MixerPreset/.//AudioBranchMixerDevice/Volume/Manual").get("Value")
+        == "0.8"
+    )
+    assert not verify_ungroup(xml, out, report)
+
+
+def test_without_folding_a_non_unity_chain_fader_stops_the_pad():
+    """Live's own behaviour: the chain fader is discarded, so the pad is refused."""
+    xml = kit_with_faders(chain="0.5", pad="0.8")
+    out, report = ungroup_pads(xml, fold_volume=False)
+
+    assert out == xml and report.ungrouped == 0
+    assert report.pads[2].skipped == "chain volume is 0.5, not 1"
+
+
+def test_a_mapped_pad_fader_stops_the_pad():
+    """A mapped parameter's stored value is ignored, so folding would do nothing."""
+    xml = kit_with_faders(chain="0.5", pad="0.8", pad_mapped=True)
+    out, report = ungroup_pads(xml)
+
+    assert out == xml and report.ungrouped == 0
+    assert "macro-mapped" in report.pads[2].skipped
+
+
+def test_a_product_past_the_faders_ceiling_stops_the_pad():
+    xml = kit_with_faders(chain="1.9", pad="1.9")  # +5.6 dB twice, past +6 dB
+    out, report = ungroup_pads(xml)
+
+    assert out == xml and report.ungrouped == 0
+    assert "leaves the fader's range" in report.pads[2].skipped
+
+
+def test_a_chain_fader_with_no_pad_fader_stops_the_pad():
+    xml = kit_with_faders(chain="0.5")
+    out, report = ungroup_pads(xml)
+
+    assert out == xml and report.ungrouped == 0
+    assert "no fader to fold it into" in report.pads[2].skipped
+
+
+def test_a_panned_chain_stops_the_pad():
     xml = synthetic_drum_rack(with_nested=True).replace(
         "\t\t\t\t</InstrumentBranchPreset>",
         "\n".join(
             [
                 "\t\t\t\t\t<MixerPreset>",
-                "\t\t\t\t\t\t<AbletonDevicePreset>",
-                "\t\t\t\t\t\t\t<Device>",
-                '\t\t\t\t\t\t\t\t<AudioBranchMixerDevice Id="0">',
-                "\t\t\t\t\t\t\t\t\t<Volume>",
-                '\t\t\t\t\t\t\t\t\t\t<Manual Value="0.5" />',
-                "\t\t\t\t\t\t\t\t\t</Volume>",
-                "\t\t\t\t\t\t\t\t</AudioBranchMixerDevice>",
-                "\t\t\t\t\t\t\t</Device>",
-                "\t\t\t\t\t\t</AbletonDevicePreset>",
+                '\t\t\t\t\t\t<AudioBranchMixerDevice Id="0">',
+                "\t\t\t\t\t\t\t<Pan>",
+                '\t\t\t\t\t\t\t\t<Manual Value="-0.5" />',
+                "\t\t\t\t\t\t\t</Pan>",
+                "\t\t\t\t\t\t</AudioBranchMixerDevice>",
                 "\t\t\t\t\t</MixerPreset>",
                 "\t\t\t\t</InstrumentBranchPreset>",
             ]
@@ -245,7 +348,7 @@ def test_a_non_unity_chain_mixer_stops_the_pad():
     out, report = ungroup_pads(xml)
 
     assert out == xml and report.ungrouped == 0
-    assert report.pads[2].skipped == "chain volume is 0.5, not 1"
+    assert report.pads[2].skipped == "chain pan is -0.5, not 0"
 
 
 def test_a_partial_key_range_stops_the_pad():

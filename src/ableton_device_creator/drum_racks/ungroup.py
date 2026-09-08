@@ -26,10 +26,18 @@ ungroups. Step 3 is cosmetic - a mapping range is inert once its ``KeyMidi`` is
 gone - so a parameter whose full range is not in ``PARAM_RANGES`` keeps its
 stored range and is reported rather than guessed at.
 
-A pad is only dissolved when the wrapper is a plain pass-through: exactly one
-chain, no return chains, unity chain mixer, full key and velocity range, nothing
-soloed. Anything else is left alone with a reason, because splicing two parallel
-chains into one series chain would change the sound.
+A pad is only dissolved when the wrapper adds nothing of its own: exactly one
+chain, no return chains, full key and velocity range, centred pan, unmuted,
+nothing soloed. Anything else is left alone with a reason, because splicing two
+parallel chains into one series chain would change the sound.
+
+Chain *level* is the exception, and the one place this departs from Live. Live
+throws the chain fader away; here its gain is folded into the pad's own fader
+instead, which is exact - two faders in series multiply, and both are stored as
+the same linear gain. The pad is only refused when that cannot be done: the pad
+has no fader, its fader is macro-mapped (Live ignores a mapped parameter's
+stored value, so writing the product would silently do nothing), or the product
+would leave the fader's range. Pass ``fold_volume=False`` for Live's behaviour.
 
 All edits are performed on the XML text. The file is never re-serialised through
 ElementTree (re-serialised Live 12 files parse but do not load). ElementTree is
@@ -45,9 +53,12 @@ The functions in this module perform no I/O.
 """
 
 import re
+import struct
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
+
+from ..macro_mapping.unmap import format_live_float
 
 __all__ = [
     "PadPlan",
@@ -58,7 +69,15 @@ __all__ = [
     "DISSOLVABLE",
     "PARAM_RANGES",
     "BOOL_THRESHOLDS",
+    "VOLUME_MIN",
+    "VOLUME_MAX",
 ]
+
+# A mixer fader's full range, as a linear gain: -70 dB to +6 dB. Measured across
+# 1863 unmapped AudioBranchMixerDevice/Volume parameters in the library, which
+# all carry exactly this pair.
+VOLUME_MIN = 0.0003162277571
+VOLUME_MAX = 1.99526238
 
 # Rack classes whose pad wrapper may be dissolved. A nested Drum Rack is not one
 # of them: its chains route by note, so there is no single chain to lift.
@@ -85,6 +104,12 @@ PARAM_RANGES: Dict[Tuple[str, str], Tuple[str, str]] = {
     ("Eq8", "Scale"): ("-2", "2"),
     ("Eq8", "Bands.*/ParameterA/Freq"): ("10", "22000"),
 }
+
+
+def _float32(x: float) -> float:
+    """Round to the nearest single-precision value, the precision Live stores."""
+    return struct.unpack("f", struct.pack("f", x))[0]
+
 
 _TAG_RX = re.compile(r'<(/?)([A-Za-z_][\w.\-]*)((?:\s+[\w.\-:]+\s*=\s*"[^"]*")*)\s*(/?)>')
 _BAND_RX = re.compile(r"^Bands\.\d+/")
@@ -216,6 +241,11 @@ class PadPlan:
     key_midi_kept: int = 0  # mappings owned by a rack nested deeper
     ranges_reset: int = 0
     ranges_left: List[str] = field(default_factory=list)
+    # The chain gain that was folded into the pad's own fader, if any, and what
+    # that fader went from and to.
+    chain_volume_folded: Optional[float] = None
+    chain_volume_was_mapped: bool = False
+    pad_volume: Optional[Tuple[str, str]] = None
     skipped: str = ""  # reason; empty when the pad was dissolved
 
 
@@ -274,8 +304,27 @@ def _pads(top: _Node) -> List[_Node]:
     return branches.each("DrumBranchPreset") if branches is not None else []
 
 
+def _chain_volume(xml: str, branch: _Node) -> Tuple[Optional[_Node], float, bool]:
+    """(the chain's Volume Manual node, its gain, whether the parameter is mapped)."""
+    mixer = branch.child("MixerPreset")
+    if mixer is None:
+        return None, 1.0, False
+    for node in mixer.descendants("Volume"):
+        manual = node.child("Manual")
+        if manual is None:
+            return None, 1.0, False
+        value = _attr(xml, manual, "Value")
+        return manual, float(value) if value else 1.0, node.child("KeyMidi") is not None
+    return None, 1.0, False
+
+
 def _pass_through(xml: str, branch: _Node) -> str:
-    """Empty when the chain is a plain pass-through, else why it is not."""
+    """Empty when the chain adds nothing but level, else why it cannot be lifted.
+
+    Volume is not checked here: a chain gain is preserved by folding it into the
+    pad's own fader (see ``_fold_edit``), which is exact because both are the
+    same linear gain. Pan, mute and a partial zone have no such composition.
+    """
     solo = branch.child("IsSoloed")
     if solo is not None and _attr(xml, solo, "Value") != "false":
         return "chain is soloed"
@@ -293,22 +342,55 @@ def _pass_through(xml: str, branch: _Node) -> str:
                 return "chain velocity range is %s-%s, not the full range" % (lo, hi)
     mixer = branch.child("MixerPreset")
     if mixer is not None:
-        for tag, default in (("Volume", "1"), ("Pan", "0")):
-            for node in mixer.descendants(tag):
-                manual = node.child("Manual")
-                if manual is None:
-                    continue
-                value = _attr(xml, manual, "Value")
-                if value is not None and value not in (default, default + ".0"):
-                    if float(value) != float(default):
-                        return "chain %s is %s, not %s" % (tag.lower(), value, default)
-                break
+        for node in mixer.descendants("Pan"):
+            manual = node.child("Manual")
+            value = _attr(xml, manual, "Value") if manual is not None else None
+            if value is not None and float(value) != 0.0:
+                return "chain pan is %s, not 0" % value
+            break
         for node in mixer.descendants("Speaker"):
             manual = node.child("Manual")
             if manual is not None and _attr(xml, manual, "Value") == "false":
                 return "chain is muted"
             break
     return ""
+
+
+def _fold_edit(
+    xml: str, pad: _Node, branch: _Node, plan: PadPlan
+) -> Tuple[str, Optional[Tuple[int, int, str]]]:
+    """Fold the chain's gain into the pad's own fader. Returns (reason, edit).
+
+    Two faders in series multiply, and both are stored as the same linear gain,
+    so the product is the level exactly. Live throws the chain fader away
+    instead; this keeps it, which is the whole reason the pad can be dissolved
+    at all when its chain is not at unity.
+    """
+    _, gain, chain_mapped = _chain_volume(xml, branch)
+    if gain == 1.0:
+        return "", None
+
+    pad_manual, pad_gain, pad_mapped = _chain_volume(xml, pad)
+    if pad_manual is None:
+        return "chain volume is %s and the pad has no fader to fold it into" % gain, None
+    if pad_mapped:
+        # A mapped parameter's stored value is ignored by Live, so writing the
+        # product here would silently do nothing.
+        return "chain volume is %s and the pad's own fader is macro-mapped" % gain, None
+
+    product = _float32(pad_gain * gain)
+    if not VOLUME_MIN <= product <= VOLUME_MAX:
+        return (
+            "chain volume %s times the pad's %s leaves the fader's range" % (gain, pad_gain),
+            None,
+        )
+
+    plan.chain_volume_folded = gain
+    plan.chain_volume_was_mapped = chain_mapped
+    # The "from" value is what the file actually stored, not a reformatting of it.
+    plan.pad_volume = (_attr(xml, pad_manual, "Value") or "", format_live_float(product))
+    start, end = pad_manual.start, pad_manual.end
+    return "", (start, end, '<Manual Value="%s" />' % format_live_float(product))
 
 
 def _attr(xml: str, node: _Node, name: str) -> Optional[str]:
@@ -359,7 +441,9 @@ def _enclosing_device(node: _Node, stop: _Node) -> Optional[_Node]:
     return device
 
 
-def plan_ungroup(xml: str) -> Tuple[UngroupReport, List[Tuple[int, int, str]]]:
+def plan_ungroup(
+    xml: str, fold_volume: bool = True
+) -> Tuple[UngroupReport, List[Tuple[int, int, str]]]:
     """Classify the preset and build the (start, end, replacement) edits."""
     tree = _spans(xml)
     root_class, top = _root_device(tree)
@@ -383,45 +467,53 @@ def plan_ungroup(xml: str) -> Tuple[UngroupReport, List[Tuple[int, int, str]]]:
             )
             continue
         for rack in racks:
-            plan, edit = _plan_pad(xml, note, index, rack)
+            plan, pad_edits = _plan_pad(xml, note, index, pad, rack, fold_volume)
             report.pads.append(plan)
-            if edit is not None:
-                edits.append(edit)
+            edits.extend(pad_edits)
     return report, edits
 
 
 def _plan_pad(
-    xml: str, note: str, index: int, rack: _Node
-) -> Tuple[PadPlan, Optional[Tuple[int, int, str]]]:
+    xml: str, note: str, index: int, pad: _Node, rack: _Node, fold_volume: bool
+) -> Tuple[PadPlan, List[Tuple[int, int, str]]]:
     device = rack.child("Device")
     rack_class = device.children[0].tag if device is not None and device.children else ""
     plan = PadPlan(note=note, index=index, rack_class=rack_class)
 
     if rack_class not in DISSOLVABLE:
         plan.skipped = "%s cannot be dissolved into a pad chain" % (rack_class or "unknown device")
-        return plan, None
+        return plan, []
 
     branch_presets = rack.child("BranchPresets")
     branches = list(branch_presets.children) if branch_presets is not None else []
     if len(branches) != 1:
         plan.skipped = "rack has %d chains; only a single chain can be lifted" % len(branches)
-        return plan, None
+        return plan, []
     returns = rack.child("ReturnBranchPresets")
     if returns is not None and returns.children:
         plan.skipped = "rack has %d return chains" % len(returns.children)
-        return plan, None
+        return plan, []
 
     branch = branches[0]
     reason = _pass_through(xml, branch)
     if reason:
         plan.skipped = reason
-        return plan, None
+        return plan, []
+
+    if fold_volume:
+        reason, fold = _fold_edit(xml, pad, branch, plan)
+    else:
+        _, gain, _ = _chain_volume(xml, branch)
+        reason, fold = ("chain volume is %s, not 1" % gain if gain != 1.0 else ""), None
+    if reason:
+        plan.skipped = reason
+        return plan, []
 
     inner = branch.child("DevicePresets")
     blocks = list(inner.children) if inner is not None else []
     if not blocks:
         plan.skipped = "rack chain holds no devices"
-        return plan, None
+        return plan, []
 
     for b in blocks:
         d = b.child("Device")
@@ -444,7 +536,10 @@ def _plan_pad(
 
     plan.key_midi_removed = len(mappings)
     start, end = _line_span(xml, rack.start, rack.end)
-    return plan, (start, end, body)
+    edits = [(start, end, body)]
+    if fold is not None:
+        edits.append(fold)
+    return plan, edits
 
 
 def _reset_and_strip(
@@ -513,9 +608,14 @@ def _rewrite_range(xml: str, pos: int, target: _Node, full: Tuple[str, str]) -> 
     return head + body
 
 
-def ungroup_pads(xml: str) -> Tuple[str, UngroupReport]:
-    """Dissolve every pad's nested rack. Returns the new text and a report."""
-    report, edits = plan_ungroup(xml)
+def ungroup_pads(xml: str, fold_volume: bool = True) -> Tuple[str, UngroupReport]:
+    """Dissolve every pad's nested rack. Returns the new text and a report.
+
+    With ``fold_volume`` a chain that is not at unity has its gain folded into
+    the pad's own fader, so the level survives; Live instead discards the chain
+    fader, and ``fold_volume=False`` reproduces that by refusing the pad.
+    """
+    report, edits = plan_ungroup(xml, fold_volume)
     text = xml
     for start, end, body in sorted(edits, key=lambda e: e[0], reverse=True):
         text = text[:start] + body + text[end:]
@@ -587,6 +687,35 @@ def _root_pads(root: ET.Element) -> List[ET.Element]:
     return [c for c in branches if c.tag == "DrumBranchPreset"] if branches is not None else []
 
 
+def _check_mixer(pb: ET.Element, pa: ET.Element, plan: PadPlan, note: str) -> List[str]:
+    """The pad's mixer may move in exactly one way: its fader takes the folded gain."""
+    mb, ma = pb.find("MixerPreset"), pa.find("MixerPreset")
+    if (mb is None) != (ma is None):
+        return ["pad %s: MixerPreset changed" % note]
+    if mb is None:
+        return []
+    if plan.chain_volume_folded is None:
+        return [] if _canon(mb) == _canon(ma) else ["pad %s: MixerPreset changed" % note]
+
+    fader_b = mb.find(".//AudioBranchMixerDevice/Volume/Manual")
+    fader_a = ma.find(".//AudioBranchMixerDevice/Volume/Manual")
+    if fader_b is None or fader_a is None:
+        return ["pad %s: the fader to fold into is gone" % note]
+
+    want = format_live_float(_float32(float(fader_b.get("Value")) * plan.chain_volume_folded))
+    if fader_a.get("Value") != want:
+        return [
+            "pad %s: fader is %s, expected %s x %s = %s"
+            % (note, fader_a.get("Value"), fader_b.get("Value"), plan.chain_volume_folded, want)
+        ]
+    # Nothing else in the mixer may have moved: compare with the fader neutralised.
+    old = fader_b.get("Value")
+    fader_b.set("Value", want)
+    same = _canon(mb) == _canon(ma)
+    fader_b.set("Value", old)
+    return [] if same else ["pad %s: MixerPreset changed beyond its fader" % note]
+
+
 def verify_ungroup(original: str, result: str, report: UngroupReport) -> List[str]:
     """Check the rewritten preset against the original. Empty list means it holds."""
     failures: List[str] = []
@@ -616,11 +745,12 @@ def verify_ungroup(original: str, result: str, report: UngroupReport) -> List[st
                 failures.append("pad %s was not dissolved but changed" % note(pb))
             continue
 
-        # The pad's own settings must be untouched.
-        for tag in ("MixerPreset", "ZoneSettings", "Name", "DocumentColorIndex", "AutoColored"):
+        # The pad's own settings must be untouched, bar a folded chain gain.
+        for tag in ("ZoneSettings", "Name", "DocumentColorIndex", "AutoColored"):
             eb, ea = pb.find(tag), pa.find(tag)
             if (eb is None) != (ea is None) or (eb is not None and _canon(eb) != _canon(ea)):
                 failures.append("pad %s: %s changed" % (note(pb), tag))
+        failures.extend(_check_mixer(pb, pa, plan, note(pb)))
 
         # The lifted devices must be the rack's chain, in order and intact.
         rack = pb.find("DevicePresets/GroupDevicePreset")
@@ -657,8 +787,10 @@ def _canon_without_pads(top: Optional[ET.Element]) -> object:
     def walk(e: ET.Element) -> object:
         kids = []
         for c in e:
-            if e.tag == "DrumBranchPreset" and c.tag == "DevicePresets":
-                kids.append(("DevicePresets", "<pad>"))
+            # Both are checked per pad, in detail: the devices against the rack's
+            # chain, the mixer against its folded fader.
+            if e.tag == "DrumBranchPreset" and c.tag in ("DevicePresets", "MixerPreset"):
+                kids.append((c.tag, "<pad>"))
                 continue
             kids.append(walk(c))
         return (e.tag, tuple(sorted(e.attrib.items())), (e.text or "").strip(), tuple(kids))

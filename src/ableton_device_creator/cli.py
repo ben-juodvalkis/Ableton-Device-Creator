@@ -489,7 +489,19 @@ def drum_rack_hide_macros(root, out_dir, in_place, dry_run, report_path, overwri
         "unchanged, so --out is a drop-in replacement for ROOT (default: copy)"
     ),
 )
-def drum_rack_ungroup(root, out_dir, in_place, dry_run, report_path, overwrite, copy_unchanged):
+@click.option(
+    "--fold-chain-volume/--no-fold-chain-volume",
+    "fold_volume",
+    default=True,
+    help=(
+        "Fold a non-unity chain fader into the pad's own fader so the level survives "
+        "(default). Live discards it instead; --no-fold-chain-volume matches Live by "
+        "leaving those pads alone"
+    ),
+)
+def drum_rack_ungroup(
+    root, out_dir, in_place, dry_run, report_path, overwrite, copy_unchanged, fold_volume
+):
     """
     Dissolve the nested rack on every Drum Rack pad under ROOT.
 
@@ -549,6 +561,7 @@ def drum_rack_ungroup(root, out_dir, in_place, dry_run, report_path, overwrite, 
             in_place=in_place,
             overwrite=overwrite,
             copy_unchanged=copy_unchanged,
+            fold_volume=fold_volume,
             progress=progress,
         )
     except (ValueError, FileExistsError, FileNotFoundError) as e:
