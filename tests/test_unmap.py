@@ -662,9 +662,24 @@ def golden_unmapped_path():
     return None
 
 
+def golden_mapped_is_still_mapped():
+    """The 'before' half of the pair has to still carry its mappings.
+
+    GOLDEN_MAPPED points into the live User Library, so a batch unmap run over
+    that tree replaces the fixture with its own output. Skip rather than fail
+    when that has happened - a file with no KeyMidi left proves nothing here.
+    """
+    if not GOLDEN_MAPPED.exists():
+        return False
+    xml = decode_adg(GOLDEN_MAPPED)
+    if isinstance(xml, bytes):
+        xml = xml.decode("utf-8")
+    return "<KeyMidi" in xml
+
+
 @pytest.mark.skipif(
-    not GOLDEN_MAPPED.exists() or golden_unmapped_path() is None,
-    reason="golden pair not on this machine",
+    not golden_mapped_is_still_mapped() or golden_unmapped_path() is None,
+    reason="golden pair not on this machine (or the mapped original has since been unmapped)",
 )
 def test_golden_pair_matches_live_unmap():
     original = decode_adg(GOLDEN_MAPPED)
