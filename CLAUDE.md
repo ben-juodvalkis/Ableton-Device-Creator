@@ -514,6 +514,37 @@ numbered subfolders.
 `06-Tom-Hi` and `08-Tom-Alt`. Re-exporting those from Kontakt and re-running
 would fill the holes. The other never-exported category is `Focus Tuned`.
 
+## Drum-Rack Chain Colors
+
+**Purpose:** colour a Drum Rack's pad chains by drum type, so a kit reads at a
+glance — kicks one colour, snares another, hats split open/closed.
+
+**Key file:** `scripts/color_drum_rack_chains.py` (`--plan` to preview,
+`--apply` to write, `--only-uncoded` to restrict to racks that carry no colour
+information yet). `classify_sample()` maps a pad's sample path to a drum type by
+filename keywords; `COLORS` maps type → Live palette index.
+
+**Two fields per pad chain, both direct children of `DrumBranchPreset`:**
+- `DocumentColorIndex` — the colour.
+- `AutoColored` — **must be `false` or Live ignores the stored index entirely**
+  and picks its own colour. This is the whole reason a rack can look uniformly
+  coloured no matter what the file says: writing `DocumentColorIndex` alone
+  changes nothing visible. Live clears the flag itself when you assign a chain
+  colour by hand. (Measured 2026-09-08: the 25 Acoustic/Ableton kits that looked
+  mono-coloured were exactly the 426 pads with `AutoColored=true`; every other
+  kit in the folder already had it `false`.)
+
+Nested `InstrumentBranchPreset` / `AudioEffectBranchPreset` chains inside a pad
+are left alone — only the drum pad's own chain is touched. Edits are
+string-level on the decoded XML, addressing the n-th textual occurrence of each
+tag and checking its old value before replacing (ElementTree decides *which*
+elements, never writes — a re-serialised Live 12 file parses but will not load).
+
+**Colour scheme** — the indices Ableton's own NI Acoustic kits use, taken as the
+dominant choice per drum type across all 515 racks under `Drum/Prod/NI Acoustic`:
+kick 54, snare/rim/clap 4, tom 19, closed hat 29, open hat 30, cymbal 69,
+shaker 26, percussion 13, tonal/other 0.
+
 ## Templates
 
 **Location:** `templates/`
