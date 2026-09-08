@@ -267,6 +267,46 @@ This project prioritizes **production-proven code over extensive test coverage**
 - `detect_velocity_layers()` - Find multi-velocity samples
 - `sort_samples_natural()` - Natural number sorting
 
+**Ungrouping pad racks (`ungroup.py`, `ungroup_batch.py`):**
+- `ungroup_pads(xml) -> (xml, UngroupReport)` - Live's own "Ungroup" on every
+  pad at once: the pad's `GroupDevicePreset` wrapper is replaced by its single
+  chain's `AbletonDevicePreset` blocks, in order
+- `plan_ungroup(xml)` - the classification plus the `(start, end, text)` edits
+- `verify_ungroup(original, result, report)` - pads, notes, mixer and every
+  lifted device compared element by element against the original
+- `ungroup_tree(root, out_dir=None, in_place=False, ...)` - batch runner behind
+  `adc drum-rack ungroup`; `root` may be one `.adg` or a directory. In place it
+  writes a `.adc-tmp.adg` sibling and `os.replace`s it; with no `--out` a single
+  file is written beside itself as `NAME (ungrouped).adg`
+
+Measured against Live 12.4.1's own ungroup of a Session Drums Club pad
+(2026-09-08). Three things happen and nothing else:
+- the wrapper goes and its chain's devices move up into the pad chain;
+- every `KeyMidi` that addressed the dissolved rack's macros goes, because
+  those macros no longer exist. A mapping inside a rack nested *deeper* keeps
+  addressing its own rack and stays;
+- each freed parameter's mapping range is restored - `MidiCCOnOffThresholds`
+  to 64/127 (universal: all 1111 unmapped booleans in the measured file carry
+  it, everything else was mapped), `MidiControllerRange` to `PARAM_RANGES`.
+
+**Stored values are never touched, and there is nothing to bake.** Unlike
+`unmap` on a script-generated kit, a preset Live saved already holds the
+macro-driven value in each mapped parameter's `Manual`; the golden pair
+confirms Live rewrites no `Manual` when it ungroups. Restoring the range is
+cosmetic - it is inert once the `KeyMidi` is gone - so a parameter whose full
+range is not in `PARAM_RANGES` keeps its stored range and is reported rather
+than guessed at. Reproduces Live's output byte for byte apart from two fields
+incidental to any resave: `RoundRobinRandomSeed` (re-rolled) and an off
+Shaper's slot payload (dropped).
+
+A pad is left alone, with a reason, unless its wrapper is a plain pass-through:
+one chain, no return chains, unity chain mixer, full key and velocity range,
+nothing soloed. Two parallel chains spliced into one series chain would change
+the sound, so multi-chain racks (the Close/Room donor, for one) are refused,
+as are nested Drum Racks. The chain mixer's own mappings die with the chain and
+are counted separately (`key_midi_dropped_with_chain`) - at unity nothing
+audible is lost, but the macro that rode the pad's level is gone.
+
 ### `sampler/` - Sampler Creation
 
 **Purpose:** Create Multi-Sampler instruments and Simpler devices
@@ -325,7 +365,7 @@ The cosmetic counterpart to unmapping, measured on a Live 12.4.15 before/after p
 **Purpose:** Terminal interface for all features
 **Dependencies:** `click>=8.0.0` (optional)
 **Commands:**
-- `adc drum-rack create|color|remap|unmap|hide-macros`
+- `adc drum-rack create|color|remap|unmap|hide-macros|ungroup`
 - `adc sampler create`
 - `adc simpler create`
 - `adc util decode|encode|info`

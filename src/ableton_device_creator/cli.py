@@ -21,6 +21,8 @@ from .macro_mapping import DrumPadColorMapper
 from .macro_mapping.unmap_batch import FileResult, unmap_tree, write_report
 from .macro_mapping.hide_macros_batch import HideResult, hide_macros_tree
 from .macro_mapping.hide_macros_batch import write_report as write_hide_report
+from .drum_racks.ungroup_batch import UngroupResult, ungroup_tree
+from .drum_racks.ungroup_batch import write_report as write_ungroup_report
 from .core import decode_adg, encode_adg
 
 # Global options
@@ -460,6 +462,123 @@ def drum_rack_hide_macros(root, out_dir, in_place, dry_run, report_path, overwri
             click.echo("  %s: %s" % (f.path, "; ".join(f.failures)))
     if report_path:
         write_hide_report(report, report_path)
+        click.echo("\nReport written to %s" % report_path)
+    if failed:
+        sys.exit(1)
+
+
+@drum_rack.command(name="ungroup")
+@click.argument("root", type=click.Path(exists=True))
+@click.option(
+    "--out",
+    "out_dir",
+    type=click.Path(),
+    help="Output tree (or output .adg, for a single file); every edited rack is written under it",
+)
+@click.option("--in-place", is_flag=True, help="Rewrite the files under ROOT instead of --out")
+@click.option("--dry-run", is_flag=True, help="Classify and report only; write nothing")
+@click.option(
+    "--report", "report_path", type=click.Path(dir_okay=False), help="Write a JSON report here"
+)
+@click.option("--overwrite", is_flag=True, help="Replace files that already exist under --out")
+@click.option(
+    "--copy-unchanged/--no-copy-unchanged",
+    default=True,
+    help=(
+        "Copy every file that is not edited (Instrument Racks, .adv presets) into --out "
+        "unchanged, so --out is a drop-in replacement for ROOT (default: copy)"
+    ),
+)
+def drum_rack_ungroup(root, out_dir, in_place, dry_run, report_path, overwrite, copy_unchanged):
+    """
+    Dissolve the nested rack on every Drum Rack pad under ROOT.
+
+    ROOT may be a single .adg or a directory to walk. On each pad whose device
+    is a single-chain Instrument, Audio Effect or MIDI Effect Rack, the wrapper
+    goes and its chain's devices move into the pad chain, in order - Live's own
+    "Ungroup". The mappings that addressed the dissolved rack's macros go with
+    it and each freed parameter's mapping range is restored; stored values are
+    never touched, so the kit sounds the same.
+
+    A pad is left alone, with a reason, when its rack is not a plain
+    pass-through: more than one chain, a return chain, a partial key or velocity
+    range, a non-unity chain mixer, or a nested Drum Rack. Mappings owned by a
+    rack nested deeper are kept.
+
+    Every edited file is re-read and verified against its original; a file that
+    fails is listed and left as it was, and the run continues. With no --out and
+    no --in-place, a single file is written beside itself as "NAME (ungrouped).adg".
+
+    Examples:
+
+      adc drum-rack ungroup "British Vintage.adg" --dry-run
+
+      adc drum-rack ungroup "British Vintage.adg"
+
+      adc drum-rack ungroup "Damage Close" --out "Damage Close-flat" --report ungroup.json
+    """
+    if not dry_run and not in_place and out_dir is None and Path(root).is_dir():
+        click.secho("Error: --out or --in-place is required unless --dry-run is given", fg="red")
+        sys.exit(2)
+
+    counter = {"n": 0}
+
+    def progress(result: UngroupResult) -> None:
+        counter["n"] += 1
+        if result.action == "failed":
+            click.secho("FAILED  %s: %s" % (result.path, "; ".join(result.failures)), fg="red")
+        elif dry_run or counter["n"] <= 1:
+            click.echo(
+                "%-9s %2d/%-2d pads  %4d mappings  %s"
+                % (
+                    result.action,
+                    result.ungrouped,
+                    result.pads,
+                    result.key_midi_removed,
+                    result.path,
+                )
+            )
+        elif not dry_run and counter["n"] % 250 == 0:
+            click.echo("  %d files..." % counter["n"])
+
+    try:
+        report = ungroup_tree(
+            root,
+            out_dir,
+            dry_run=dry_run,
+            in_place=in_place,
+            overwrite=overwrite,
+            copy_unchanged=copy_unchanged,
+            progress=progress,
+        )
+    except (ValueError, FileExistsError, FileNotFoundError) as e:
+        click.secho("Error: %s" % e, fg="red")
+        sys.exit(1)
+
+    click.echo("")
+    click.secho("Totals%s:" % (" (dry run)" if dry_run else ""), bold=True)
+    for key, value in report.totals.items():
+        click.echo("  %-32s %d" % (key, value))
+    if report.ranges_left:
+        click.echo("")
+        click.echo(
+            "Mapping range left stored on %d parameter kind(s) (inert once unmapped):"
+            % len(report.ranges_left)
+        )
+        for label in report.ranges_left:
+            click.echo("  %s" % label)
+    written = [f for f in report.files if f.output]
+    if written and len(written) <= 5:
+        click.echo("")
+        for f in written:
+            click.echo("Wrote %s" % f.output)
+    failed = [f for f in report.files if f.action == "failed"]
+    if failed:
+        click.secho("\n%d file(s) failed and were left as they were:" % len(failed), fg="red")
+        for f in failed:
+            click.echo("  %s: %s" % (f.path, "; ".join(f.failures)))
+    if report_path:
+        write_ungroup_report(report, report_path)
         click.echo("\nReport written to %s" % report_path)
     if failed:
         sys.exit(1)
