@@ -621,6 +621,33 @@ is what is on disk, but they duplicate their Close counterparts; the combined
 set builds Harmonics from Close alone rather than layering one recording
 against itself. Re-exporting that mic from Kontakt and re-running fixes both.
 
+### Dynamics racks (`create_chamber_strings_long_evo_racks.py`)
+
+One Instrument Rack per articulation, holding all six dynamic layers as chains
+crossfaded by the user's `Evo-Grid-Selector.amxd`. Written to
+`.../User Library/Looping Presets/Instruments/Ableton/Inst/String/Long/Chamber Strings/`.
+
+**Donor is `Long CS.adg`, hand-built by the user** (2026-09-09) from the six
+combined Close/Far patches. Chain N is dynamic layer N: a Sampler plus one Evo
+Grid Selector instance. Every `BranchSelectorRange` is 0-0 — the chain selector
+does nothing, the Max device does the crossfading from the "Crossfade X" /
+"Crossfade Y" macros. The rack carries **no `KeyMidi` mappings at all**, the
+Looping convention: the surface drives parameters by macro *name*, and a
+macro-held parameter is disabled in Live.
+
+The six Max instances are *not* identical — `Wrap` is on in chains 1/3/5 and off
+in 2/4/6. That is the donor's business; chain N's devices are carried across to
+chain N untouched rather than normalised.
+
+**Edits are string-level**, splicing only the six `<SampleParts>` spans and the
+seven `<UserName>` values. The donor is a Live-saved file with a large embedded
+Max payload, and re-serialising one through ElementTree yields a file that
+parses but will not load. `--verify-donor` rebuilds `Long CS` itself and checks
+the result: everything outside the zone maps comes back byte-identical, and the
+only zone-level difference is `Volume` written as `1.0` where Live writes `1`
+(plus the slicing/warp defaults Live adds on resave, which generated patches
+have never carried).
+
 ## Drum-Rack Chain Colors
 
 **Purpose:** colour a Drum Rack's pad chains by drum type, so a kit reads at a
