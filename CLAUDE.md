@@ -565,6 +565,62 @@ numbered subfolders.
 `06-Tom-Hi` and `08-Tom-Alt`. Re-exporting those from Kontakt and re-running
 would fill the holes. The other never-exported category is `Focus Tuned`.
 
+## Chamber Strings Long Sampler Patches
+
+**Purpose:** flat single-Sampler `.adv` building blocks for the Spitfire
+Chamber Strings sustained articulations — no racks, no macros, no chains, to be
+assembled into a master rack by hand.
+
+**Key file:** `scripts/create_chamber_strings_long_samplers.py`
+(`--test` writes two verification patches, `--flat` / `--combined` one set).
+Reuses `read_long_folder` and `discover_articulations` from
+`create_chamber_strings_long_racks.py` (the rack approach, set aside) and
+`MultisampleRackCreator` / `Zone` from `sampler/multisample.py`. Donor is
+`templates/oae_evo_sampler_template.adv`, a bare Sampler with no zones.
+
+**Two sets, both written outside the repo** under
+`.../Chamber Strings/Sampler Instruments/`:
+- `Long/` — 84 patches, one articulation x mic x dynamic layer, 5556 zones,
+  every source file mapped exactly once.
+- `Long Close-Far/` — 42 patches, both mics in one Sampler crossfaded on the
+  Sample Selector, 5334 zones.
+
+Ranges are fully chromatic, so every key zone is one key wide on its own root
+with no stretching. Velocity is full 1-127 everywhere; the dynamics are
+separate patches, never on velocity. Layer order dyn1..dyn6 =
+cc001/026/051/076/102/127, confirmed by measured RMS rising monotonically
+across all six on four different articulations (2026-09-09).
+
+**Both mics in one Sampler works only because this library has no round
+robins.** The Close zones span the whole selector range and are full at 0,
+fading to silence at 127; the Far zones mirror them; both overlap on every
+note, so Live layers them and the selector mixes. With `RoundRobin` on, Live
+pools every overlapping zone and alternates instead — one mic per note, no
+blend. That is what ruled the selector out for the short articulations. Here
+there is one take per note per layer per mic, so the flag stays `false`.
+Confirmed in Live 12 (2026-09-09): the sweep blends smoothly, it does not
+switch.
+
+**Close and Far are not two mics of one take.** Measured coherence between them
+is 0.04-0.12 in every band and note onsets differ by up to half a second
+(Flautando A#3: Close 151 ms, Far 644 ms). They are independent renders, so a
+mid-selector blend doubles two performances rather than moving a mic — the same
+situation as the Damage Close-Room racks. Usable, but not mic positioning, and
+the middle of the sweep dips about 3 dB with Far already 5-6 dB under Close.
+
+**Live does not read a WAV's `smpl` chunk when it loads a preset** — only when
+a sample is dragged into the UI. These are 24 s sustains that must loop, so
+each zone's sustain loop is written into the XML from the file's own chunk
+(`Zone(loop="auto")`, typically frames 176400 -> 1058399). Without it every
+patch stops dead at 24 s.
+
+**Known source defect — `Long_Harmonics_Far` is the Close render.** Notes 60-70
+are byte-identical files; the rest are waveform-identical (coherence 1.000, max
+difference one 24-bit LSB). The flat set still writes those 6 patches since that
+is what is on disk, but they duplicate their Close counterparts; the combined
+set builds Harmonics from Close alone rather than layering one recording
+against itself. Re-exporting that mic from Kontakt and re-running fixes both.
+
 ## Drum-Rack Chain Colors
 
 **Purpose:** colour a Drum Rack's pad chains by drum type, so a kit reads at a
