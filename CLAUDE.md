@@ -635,9 +635,12 @@ does nothing, the Max device does the crossfading from the "Crossfade X" /
 Looping convention: the surface drives parameters by macro *name*, and a
 macro-held parameter is disabled in Live.
 
-The six Max instances are *not* identical — `Wrap` is on in chains 1/3/5 and off
-in 2/4/6. That is the donor's business; chain N's devices are carried across to
-chain N untouched rather than normalised.
+Chain N's Max device is carried across to chain N untouched, with one deliberate
+exception: **`Wrap` is forced off in every chain.** The donor was first saved
+with it on in chains 1/3/5 and off in 2/4/6, which was not intended.
+`--fix-donor` corrects the donor in place as well, backing it up to
+`/Users/Shared/Music/_backups/Chamber Strings Long racks/` first — that edit
+changes exactly three characters in the file and nothing else.
 
 **Edits are string-level**, splicing only the six `<SampleParts>` spans and the
 seven `<UserName>` values. The donor is a Live-saved file with a large embedded

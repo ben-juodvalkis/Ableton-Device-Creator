@@ -23,9 +23,10 @@ macros. The rack carries NO KeyMidi mappings at all, which is the Looping
 convention: the Looping surface drives parameters by macro *name*, and a
 macro-held parameter is disabled in Live.
 
-The Max device instances are not all identical — their `Wrap` parameter is on in
-chains 1/3/5 and off in chains 2/4/6. That is the donor's business, so chain N's
-devices are carried across to chain N untouched rather than normalised.
+Chain N's Max device is carried across to chain N untouched, with one deliberate
+exception: `Wrap` is forced off everywhere. The donor was saved with it on in
+chains 1/3/5 and off in 2/4/6, which was not intended. `--fix-donor` corrects the
+donor in place too, backing it up first.
 
 ## Why string-level edits
 
@@ -43,6 +44,7 @@ Usage:
 
 import argparse
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -56,6 +58,7 @@ USER_LIBRARY = Path(
 RACK_DIR = (USER_LIBRARY / "Looping Presets/Instruments/Ableton/Inst/String"
             / "Long/Chamber Strings")
 DONOR = RACK_DIR / "Long CS.adg"
+BACKUP_DIR = Path("/Users/Shared/Music/_backups/Chamber Strings Long racks")
 ADV_DIR = Path(
     "/Users/Shared/Music/Soundbanks/Ben Multisamples/Spitfire/Chamber Strings"
     "/Sampler Instruments/Long Close-Far"
@@ -73,6 +76,7 @@ RACKS = {
     "Long Tremolo": "Tremolo",
 }
 DYN_COUNT = 6
+WRAP_PARAM = "Wrap"
 
 
 def adv_name(label: str, dyn: int) -> str:
@@ -85,6 +89,35 @@ def sample_parts_text(adv: Path) -> str:
     start = xml.index("<SampleParts>")
     end = xml.index("</SampleParts>", start) + len("</SampleParts>")
     return xml[start:end]
+
+
+def set_wrap_off(xml: str):
+    """Force the Evo Grid Selector's `Wrap` enum off in every chain.
+
+    The donor was saved with Wrap on in chains 1/3/5 and off in 2/4/6, which was
+    not intended — it should be off everywhere. Each `MxDEnumParameter` block is
+    matched by name and carries exactly one `Manual`, so the edit is anchored
+    inside that block and cannot reach any other parameter.
+    """
+    out, cursor, changed = [], 0, 0
+    for m in re.finditer(r"<MxDEnumParameter[ >]", xml):
+        end = xml.index("</MxDEnumParameter>", m.start())
+        block = xml[m.start():end]
+        name = re.search(r'<Name Value="([^"]*)" />', block)
+        manuals = re.findall(r'<Manual Value="([^"]*)" />', block)
+        if name is None or name.group(1) != WRAP_PARAM or len(manuals) != 1:
+            continue
+        if manuals[0] == "0":
+            continue
+        fixed, n = re.subn(r'(<Manual Value=")[^"]*(" />)', r"\g<1>0\g<2>", block, count=1)
+        if n != 1:
+            raise SystemExit("could not rewrite a Wrap parameter block")
+        out.append(xml[cursor:m.start()])
+        out.append(fixed)
+        cursor = end
+        changed += 1
+    out.append(xml[cursor:])
+    return "".join(out), changed
 
 
 def donor_spans(xml: str):
@@ -145,6 +178,8 @@ def main():
                     help="also rebuild Long CS, to check the splice reproduces the donor")
     ap.add_argument("--scratch", default=".",
                     help="where --verify-donor writes its rebuilt copy")
+    ap.add_argument("--fix-donor", action="store_true",
+                    help="also turn Wrap off in the donor itself, backing it up first")
     args = ap.parse_args()
 
     if not DONOR.exists():
@@ -154,6 +189,21 @@ def main():
     print(f"Donor: {DONOR.name}  ({len(donor_xml):,} chars, "
           f"{DONOR.stat().st_size:,} bytes packed)")
     print(f"  rack name span {spans[0]}, {len(spans[1])} chains")
+
+    if args.fix_donor:
+        fixed, n = set_wrap_off(donor_xml)
+        if n:
+            backup = BACKUP_DIR / f"Long CS (Wrap alternating, pre-fix).adg"
+            backup.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(DONOR, backup)
+            if not args.plan:
+                encode_adg(fixed, DONOR)
+                print(f"  donor: Wrap turned off in {n} chains "
+                      f"(backup: {backup})")
+            donor_xml = fixed
+            spans = donor_spans(donor_xml)  # offsets move if the edit ever changes length
+        else:
+            print("  donor: Wrap already off in every chain")
 
     targets = dict(RACKS)
     if not args.verify_donor:
@@ -166,17 +216,19 @@ def main():
             raise SystemExit(f"{rack_name}: missing {missing}")
 
         out_xml = build(rack_name, label, donor_xml, spans)
+        out_xml, wrapped = set_wrap_off(out_xml)
         zones = out_xml.count("<MultiSamplePart ")
         if args.plan:
             print(f"  {rack_name + '.adg':<26} <- {advs[0].stem} .. {advs[-1].stem}"
-                  f"   {zones} zones")
+                  f"   {zones} zones, Wrap turned off in {wrapped} chains")
             continue
 
         out = RACK_DIR / f"{rack_name}.adg"
         if args.verify_donor and rack_name == "Long CS":
             out = Path(args.scratch) / "Long CS (rebuilt).adg"
         encode_adg(out_xml, out)
-        print(f"  {out.name:<26} {zones} zones, {out.stat().st_size:,} bytes")
+        print(f"  {out.name:<26} {zones} zones, {out.stat().st_size:,} bytes, "
+              f"Wrap off in all 6 ({wrapped} corrected)")
 
 
 if __name__ == "__main__":
