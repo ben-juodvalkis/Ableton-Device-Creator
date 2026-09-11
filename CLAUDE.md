@@ -330,6 +330,39 @@ that rode it is gone.
   - Single mode
   - `get_sample_info()` - Extract metadata
 
+**Envelope parameters (`envelope.py`, `envelope_batch.py`):**
+- `set_envelope_param(xml, value, param="AttackTime", envelope="amp")` - set one
+  envelope parameter on every Sampler in a preset
+- `verify_envelope_set(original, result, report)` - result parses, only the
+  targeted parameters moved, and every one now holds the requested value
+- `set_envelope_tree(root, value, ...)` - batch runner behind `adc sampler set-env`
+
+**A Sampler has four envelopes and they all expose the same parameter names**, so
+"amp attack" cannot be found by searching for `AttackTime` - a 32-pad rack has
+128 of them (measured 2026-09-11):
+
+```
+MultiSampler/VolumeAndPan/Envelope/AttackTime       <- the amp envelope
+MultiSampler/.../SimplerFilter/Envelope/AttackTime
+MultiSampler/VolumeAndPan/Envelope/Slot/Value/SimplerPitchEnvelope/AttackTime
+MultiSampler/.../SimplerSubOsc/Envelope/AttackTime
+```
+
+Note the third - **the pitch envelope is nested inside the amp envelope**, so
+even "the AttackTime inside VolumeAndPan/Envelope" is ambiguous by text. Targets
+are resolved structurally with ElementTree (direct child of direct child) and
+then located in the text by document-order index, which is exact because
+`Element.iter()` and a left-to-right text scan visit elements in the same order.
+
+**A macro-mapped parameter is never written.** Live ignores the stored `Manual`
+of a parameter a macro holds, so the write would be inert; those are counted and
+reported instead - the same reasoning as `ungroup` refusing to fold a level into
+a macro-mapped fader. A preset where *every* parameter is macro-held is reported
+as `nothing_writable_all_macro_held`, never as "already correct" - the
+distinction matters, since the latter would claim the value is set when it is
+not. Values are written in Live's float32 style (`0.1` stores as `0.1000000015`),
+so a preset already holding the value is left byte-identical.
+
 **Thinning (`thin.py`, `thin_batch.py`):**
 - `thin_multisamples(xml, max_layers, max_takes) -> (xml, ThinReport)` - drop
   zones until every pad is at most N velocity layers of at most M round-robin
@@ -697,10 +730,24 @@ have never carried).
 
 ## Lite Rack Sets (2026-09-11)
 
-211 lightweight racks built with `adc sampler thin`, each in a `<Library> Lite`
-sibling folder beside the full set under `.../Looping Presets/Instruments/
-Ableton/`. Same filenames, so a Lite rack is a drop-in swap for its full
-counterpart. **59.8 GB less sample RAM**, zero verification failures.
+211 lightweight racks built with `adc sampler thin`, one per full rack. Same
+filenames, so a Lite rack is a drop-in swap. **59.8 GB less sample RAM**, zero
+verification failures.
+
+**Where they live.** The full sets were moved to
+`.../Looping Presets/Instruments/xFull/` (`Abbey Road`, `A Moonkits`, `Damage`,
+`Metal`, `Shaker`, `Ethnic`, `Mini Racks` - 211 racks, out of the browse path),
+and the Lite sets sit in the normal tree under
+`.../Instruments/Ableton/Drum/` and `.../Ableton/Perc/` as `<Library> Lite`.
+The table below names each set by its original library.
+
+**Amp attack set to 0.2 ms across all 422 racks** (2026-09-11) with
+`adc sampler set-env --value 0.2 --in-place`: 10280 parameters written, 5140 in
+each tree. A further 4300 are macro-held and were left alone - concentrated in
+the Damage Close/Room racks (exactly half of their Samplers) and Soundiron
+Shaker, where 14 presets have no writable amp attack at all. Backup of all 422
+racks beforehand in `/Users/Shared/Music/_backups/Lite and Full racks before
+amp attack 2026-09-11/`.
 
 | set | racks | zones | sample RAM | layers x takes |
 |---|---|---|---|---|

@@ -23,6 +23,9 @@ from .macro_mapping.hide_macros_batch import HideResult, hide_macros_tree
 from .macro_mapping.hide_macros_batch import write_report as write_hide_report
 from .drum_racks.ungroup_batch import UngroupResult, ungroup_tree
 from .drum_racks.ungroup_batch import write_report as write_ungroup_report
+from .sampler.envelope import ENVELOPES
+from .sampler.envelope_batch import EnvelopeResult, set_envelope_tree
+from .sampler.envelope_batch import write_report as write_env_report
 from .sampler.thin import DEFAULT_MAX_LAYERS, DEFAULT_MAX_TAKES
 from .sampler.thin_batch import ThinResult, thin_tree
 from .sampler.thin_batch import write_report as write_thin_report
@@ -609,6 +612,97 @@ def drum_rack_ungroup(
 def sampler():
     """Create Multi-Sampler instruments."""
     pass
+
+
+@sampler.command(name="set-env")
+@click.argument("root", type=click.Path(exists=True))
+@click.option("--value", type=float, required=True, help="Value to store, in the parameter's own units")
+@click.option("--param", default="AttackTime", show_default=True, help="Envelope parameter tag")
+@click.option(
+    "--envelope",
+    type=click.Choice(sorted(ENVELOPES)),
+    default="amp",
+    show_default=True,
+    help="Which of the Sampler's envelopes",
+)
+@click.option("--out", "out_dir", type=click.Path(file_okay=False), help="Output tree")
+@click.option("--in-place", is_flag=True, help="Rewrite the files under ROOT instead of --out")
+@click.option("--dry-run", is_flag=True, help="Classify and report only; write nothing")
+@click.option(
+    "--report", "report_path", type=click.Path(dir_okay=False), help="Write a JSON report here"
+)
+@click.option("--overwrite", is_flag=True, help="Replace files that already exist under --out")
+def sampler_set_env(root, value, param, envelope, out_dir, in_place, dry_run, report_path, overwrite):
+    """
+    Set one Sampler envelope parameter on every Sampler under ROOT.
+
+    ROOT may be one preset or a directory. A Sampler holds four envelopes that
+    all expose the same parameter names - a 32-pad rack has 128 AttackTime
+    elements - so the target is resolved structurally (the amp envelope is
+    MultiSampler/VolumeAndPan/Envelope), not by searching for the tag.
+
+    A parameter a macro holds is counted and left alone: Live ignores the stored
+    value of a mapped parameter, so writing it would be inert.
+
+    Values are written in Live's own float32 style, so a preset that already
+    holds the value is left byte-identical.
+
+    Examples:
+
+      adc sampler set-env "Instruments/xFull" --value 0.2 --dry-run
+
+      adc sampler set-env "Instruments/xFull" --value 0.2 --in-place
+    """
+    if not dry_run and not in_place and out_dir is None:
+        click.secho("Error: --out or --in-place is required unless --dry-run is given", fg="red")
+        sys.exit(2)
+
+    counter = {"n": 0}
+
+    def progress(result: EnvelopeResult) -> None:
+        counter["n"] += 1
+        if result.action == "failed":
+            click.secho("FAILED  %s: %s" % (result.path, "; ".join(result.failures)), fg="red")
+        elif dry_run and result.action == "dry-run":
+            click.echo(
+                "%-9s write=%-5d macro-held=%-5d %s"
+                % (result.action, result.written, result.mapped, result.path)
+            )
+        elif not dry_run and counter["n"] % 50 == 0:
+            click.echo("  %d files..." % counter["n"])
+
+    try:
+        report = set_envelope_tree(
+            root,
+            value,
+            param=param,
+            envelope=envelope,
+            out_dir=out_dir,
+            dry_run=dry_run,
+            in_place=in_place,
+            overwrite=overwrite,
+            progress=progress,
+        )
+    except (ValueError, FileExistsError, FileNotFoundError) as e:
+        click.secho("Error: %s" % e, fg="red")
+        sys.exit(1)
+
+    click.echo("")
+    click.secho(
+        "%s %s -> %s%s:" % (envelope, param, report.value, " (dry run)" if dry_run else ""), bold=True
+    )
+    for key, val in report.totals.items():
+        click.echo("  %-40s %d" % (key, val))
+    failed = [f for f in report.files if f.action == "failed"]
+    if failed:
+        click.secho("\n%d file(s) failed and were left as they were:" % len(failed), fg="red")
+        for f in failed:
+            click.echo("  %s: %s" % (f.path, "; ".join(f.failures)))
+    if report_path:
+        write_env_report(report, report_path)
+        click.echo("\nReport written to %s" % report_path)
+    if failed:
+        sys.exit(1)
 
 
 @sampler.command(name="thin")
