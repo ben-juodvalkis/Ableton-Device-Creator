@@ -23,6 +23,9 @@ from .macro_mapping.hide_macros_batch import HideResult, hide_macros_tree
 from .macro_mapping.hide_macros_batch import write_report as write_hide_report
 from .drum_racks.ungroup_batch import UngroupResult, ungroup_tree
 from .drum_racks.ungroup_batch import write_report as write_ungroup_report
+from .sampler.thin import DEFAULT_MAX_LAYERS, DEFAULT_MAX_TAKES
+from .sampler.thin_batch import ThinResult, thin_tree
+from .sampler.thin_batch import write_report as write_thin_report
 from .core import decode_adg, encode_adg
 
 # Global options
@@ -606,6 +609,140 @@ def drum_rack_ungroup(
 def sampler():
     """Create Multi-Sampler instruments."""
     pass
+
+
+@sampler.command(name="thin")
+@click.argument("root", type=click.Path(exists=True))
+@click.option(
+    "--out",
+    "out_dir",
+    type=click.Path(file_okay=False),
+    help="Output tree; every thinned preset is written at its relative path under it",
+)
+@click.option("--in-place", is_flag=True, help="Rewrite the files under ROOT instead of --out")
+@click.option("--dry-run", is_flag=True, help="Classify and report only; write nothing")
+@click.option(
+    "--layers",
+    "max_layers",
+    type=int,
+    default=DEFAULT_MAX_LAYERS,
+    show_default=True,
+    help="Keep at most this many velocity layers per pad",
+)
+@click.option(
+    "--takes",
+    "max_takes",
+    type=int,
+    default=DEFAULT_MAX_TAKES,
+    show_default=True,
+    help="Keep at most this many round-robin takes per velocity layer",
+)
+@click.option(
+    "--report", "report_path", type=click.Path(dir_okay=False), help="Write a JSON report here"
+)
+@click.option("--overwrite", is_flag=True, help="Replace files that already exist under --out")
+@click.option(
+    "--copy-unchanged/--no-copy-unchanged",
+    default=True,
+    help=(
+        "Copy every preset that is already within the limits into --out unchanged, "
+        "so --out is a drop-in replacement for ROOT (default: copy)"
+    ),
+)
+def sampler_thin(
+    root, out_dir, in_place, dry_run, max_layers, max_takes, report_path, overwrite, copy_unchanged
+):
+    """
+    Thin every Sampler under ROOT to fewer velocity layers and round robins.
+
+    ROOT may be one preset or a directory. Autosampled kits carry everything the
+    source library recorded - the Damage and Abbey Road racks are 10 velocity
+    layers deep with up to 6 takes each, so one rack can pull 1.5 GB of samples
+    into RAM. This drops zones until each pad is at most --layers deep and
+    --takes wide, and widens the surviving layers to cover the velocity range
+    the dropped ones held, so 1-127 stays covered with no gap.
+
+    The result references a subset of the same sample files, and everything
+    outside the zone lists - macros, mappings, chain colours, mixer, device
+    parameters - is left byte for byte as it was.
+
+    A pad is left alone, and counted, when its layers cannot be safely merged:
+    velocity layers that do not tile 1-127, or a real velocity crossfade.
+
+    Every written file is re-read and verified against its original; a file that
+    fails is left as it was and the run continues.
+
+    Examples:
+
+      adc sampler thin "Instruments/Ableton/Drum/Abbey Road" --dry-run
+
+      adc sampler thin "Instruments/Ableton/Drum/Abbey Road" --out "Instruments/Ableton/Drum/Abbey Road Lite"
+
+      adc sampler thin kit.adg --in-place --layers 8 --takes 3
+    """
+    if not dry_run and not in_place and out_dir is None:
+        click.secho("Error: --out or --in-place is required unless --dry-run is given", fg="red")
+        sys.exit(2)
+
+    counter = {"n": 0}
+
+    def progress(result: ThinResult) -> None:
+        counter["n"] += 1
+        if result.action == "failed":
+            click.secho("FAILED  %s: %s" % (result.path, "; ".join(result.failures)), fg="red")
+        elif dry_run and result.action == "dry-run":
+            click.echo(
+                "%-9s %5d -> %-5d zones  %6.0f -> %-6.0f MB  %s"
+                % (
+                    result.action,
+                    result.zones_before,
+                    result.zones_after,
+                    result.bytes_before / 1e6,
+                    result.bytes_after / 1e6,
+                    result.path,
+                )
+            )
+        elif not dry_run and counter["n"] % 25 == 0:
+            click.echo("  %d files..." % counter["n"])
+
+    try:
+        report = thin_tree(
+            root,
+            out_dir,
+            max_layers=max_layers,
+            max_takes=max_takes,
+            dry_run=dry_run,
+            in_place=in_place,
+            overwrite=overwrite,
+            copy_unchanged=copy_unchanged,
+            progress=progress,
+        )
+    except (ValueError, FileExistsError, FileNotFoundError) as e:
+        click.secho("Error: %s" % e, fg="red")
+        sys.exit(1)
+
+    totals = report.totals
+    click.echo("")
+    click.secho("Totals%s:" % (" (dry run)" if dry_run else ""), bold=True)
+    for key, value in totals.items():
+        if key.startswith("sample_bytes"):
+            click.echo("  %-40s %.1f GB" % (key, value / 1e9))
+        else:
+            click.echo("  %-40s %d" % (key, value))
+    saved = totals["sample_bytes_before"] - totals["sample_bytes_after"]
+    if saved:
+        click.secho("  %-40s %.1f GB" % ("sample_bytes_saved", saved / 1e9), fg="green")
+
+    failed = [f for f in report.files if f.action == "failed"]
+    if failed:
+        click.secho("\n%d file(s) failed and were left as they were:" % len(failed), fg="red")
+        for f in failed:
+            click.echo("  %s: %s" % (f.path, "; ".join(f.failures)))
+    if report_path:
+        write_thin_report(report, report_path)
+        click.echo("\nReport written to %s" % report_path)
+    if failed:
+        sys.exit(1)
 
 
 @sampler.command(name="create")

@@ -330,6 +330,50 @@ that rode it is gone.
   - Single mode
   - `get_sample_info()` - Extract metadata
 
+**Thinning (`thin.py`, `thin_batch.py`):**
+- `thin_multisamples(xml, max_layers, max_takes) -> (xml, ThinReport)` - drop
+  zones until every pad is at most N velocity layers of at most M round-robin
+  takes, widening the survivors to cover what the dropped layers held
+- `plan_thin(xml, ...)` - the classification plus the `(start, end, text)` edits
+- `verify_thin(original, result, report)` - result parses, text outside the zone
+  lists is byte-identical, every surviving zone was in the original, and every
+  lane still tiles velocity 1-127 with no gap or overlap
+- `thin_tree(root, out_dir=None, in_place=False, ...)` - batch runner behind
+  `adc sampler thin`; `root` may be one preset or a directory
+
+Autosampled kits carry everything the source library recorded - the Damage and
+Abbey Road racks are 10 velocity layers deep with up to 6 takes each, so one
+32-pad rack references ~1700 separate files and pulls 1.5 GB into RAM. The
+result references a strict *subset* of the original's sample files, so a thinned
+rack can only sound like a coarser version of what it came from.
+
+**Velocity centres are never inferred, and must not be** (measured across 7288
+pads, 2026-09-11). A layer's recorded centre is not stored in the preset and
+every reconstruction fails somewhere: Moonkit pads missing their softest layer
+have a first bin stretched down to 1, the Damage Kits ladder puts centres at bin
+*maxima* rather than midpoints, and Soundiron's `_v1_`..`_v4_` are layer indices
+that read exactly like velocities. Instead a kept layer absorbs the dropped
+layers adjacent to it - a run is split between the kept layers on either side -
+so every new boundary is one an original bin already had, and contiguity holds
+by construction.
+
+Zones are grouped into **lanes by key range and selector range** and each lane
+is thinned on its own: the Damage Close/Room racks put two mics in one device on
+separate selector ranges, and thinning them as one pool would strip a mic
+instead of a dynamic. A chromatic instrument is simply one lane per recorded
+note. A lane is left alone, and counted, when its layers do not tile 1-127 or
+when a zone uses a real velocity crossfade (18 zones in the library) - those
+would have to be re-derived rather than merged.
+
+**Why thin the presets rather than rebuild them from source.** The generator
+scripts and their libraries all still resolve, but the racks in the User Library
+have been curated well past what the scripts emit: `AR 50s Autumn Kit
+Brushes.adg` was renamed `50s Autumn Brushes.adg`, `Drum_Rack_Combo_08.adg`
+became `Perc/Damage/Combo/Combo 08.adg`, and every rack has since been
+unmapped, macro-hidden and chain-coloured. Filenames and folder curation are
+recorded nowhere in the repo, so a rebuild cannot reproduce them. Editing the
+presets preserves all of it byte for byte.
+
 ### `macro_mapping/` - Macro Controls
 
 **Purpose:** Add macro mappings and modify device parameters
@@ -377,7 +421,7 @@ The cosmetic counterpart to unmapping, measured on a Live 12.4.15 before/after p
 **Dependencies:** `click>=8.0.0` (optional)
 **Commands:**
 - `adc drum-rack create|color|remap|unmap|hide-macros|ungroup`
-- `adc sampler create`
+- `adc sampler create|thin`
 - `adc simpler create`
 - `adc util decode|encode|info`
 
@@ -650,6 +694,36 @@ the result: everything outside the zone maps comes back byte-identical, and the
 only zone-level difference is `Volume` written as `1.0` where Live writes `1`
 (plus the slicing/warp defaults Live adds on resave, which generated patches
 have never carried).
+
+## Lite Rack Sets (2026-09-11)
+
+211 lightweight racks built with `adc sampler thin`, each in a `<Library> Lite`
+sibling folder beside the full set under `.../Looping Presets/Instruments/
+Ableton/`. Same filenames, so a Lite rack is a drop-in swap for its full
+counterpart. **59.8 GB less sample RAM**, zero verification failures.
+
+| set | racks | zones | sample RAM | layers x takes |
+|---|---|---|---|---|
+| `Perc/Damage Lite` | 68 | 114084 -> 63286 | 102.2 -> 61.3 GB | 8 x 3 |
+| `Drum/Abbey Road Lite` | 19 | 29888 -> 13640 | 24.2 -> 10.8 GB | 8 x 3 |
+| `Drum/A Moonkits Lite` | 80 | 49942 -> 33127 | 17.1 -> 11.5 GB | 8 x 3 |
+| `Perc/Metal Lite` | 18 | 3521 -> 2158 | 2.2 -> 1.2 GB | 8 x 6 |
+| `Perc/Shaker Lite` | 17 | 8358 -> 3256 | 1.0 -> 0.3 GB | 8 x 6 |
+| `Perc/Ethnic Lite` | 2 | 2106 -> 1224 | 0.9 -> 0.5 GB | 8 x 6 |
+| `Perc/Mini Racks Lite` | 7 | 9428 -> 7513 | 0.2 -> 0.1 GB | 8 x 6 |
+
+**The take count is per-library and matters.** Damage, Abbey Road and Moonkits
+record 2-6 takes per layer, so 3 is a mild trim. The Soundiron libraries
+(Shaker, Metal, Ethnic, Mini Racks) record **10-47** takes per layer with few or
+no velocity layers - round robin *is* their realism, and 3 takes machine-guns on
+a roll. Those were built at 6.
+
+**Racks deliberately left out.** `Drum/Ableton`, `Inst/Guitar`, `Key/Mallets`
+and most of `Perc/Latin` reference one big *combined* sample file per
+instrument, with many zones pointing into regions of it (Ableton's own Pack
+format). Thinning those cuts zones but frees essentially no RAM - `Drum/Ableton`
+is 25182 zones for 0.34 GB - so it is all risk and no reward. Check
+`unique sample files ~= zone count` before adding a library to the list.
 
 ## Drum-Rack Chain Colors
 
