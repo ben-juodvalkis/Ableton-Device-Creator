@@ -267,6 +267,43 @@ This project prioritizes **production-proven code over extensive test coverage**
 - `detect_velocity_layers()` - Find multi-velocity samples
 - `sort_samples_natural()` - Natural number sorting
 
+**Auto-Select (`auto_select.py`, `auto_select_batch.py`):**
+- `set_auto_select(xml, enabled=True) -> (xml, AutoSelectReport)` - flip the root
+  Drum Rack's `IsAutoSelectEnabled`
+- `root_auto_select_index(xml)` - `(root device tag, document-order index, spans)`
+- `verify_auto_select(original, result, report)` - result parses, every byte
+  outside the `IsAutoSelectEnabled` fields is identical, and exactly one field
+  moved: the root device's own, to the requested value
+- `set_auto_select_tree(root, enabled=True, ...)` - batch runner behind
+  `adc drum-rack auto-select` (`--on/--off`); in place it writes a
+  `.adc-tmp.adg` sibling and `os.replace`s it
+
+Live's Auto-Select toggle in the rack's chain list: with it on, playing a pad
+selects that pad in the rack view. It is a view preference - no parameter, no
+mapping, no sample reference - so a rack sounds the same either way. Measured
+against Live 12.4.1's own toggle on `Kit-Carbon` (2026-09-11): that one field on
+the root device is the whole gesture, reproduced byte for byte. Live's resave
+also rewrote the preset's own `RelativePath`/`Path` provenance and `UserName`,
+incidental to the file having been copied out of the User Library; neither is
+reproduced.
+
+**`IsAutoSelectEnabled` is not only a rack field, so it cannot be found by
+searching for the tag.** A Sampler carries one of its own under
+`MultiSampler/ViewSettings` - the same idea one level down, for its zone view.
+Which sibling owns the others depends on how the pads are built, and both shapes
+are in the library: `Kit-Carbon`'s 17 fields are the rack plus 16 nested
+Instrument Racks, while `Perc/Latin/Conga A`'s 33 are the rack plus 32 bare pad
+Samplers. The target is resolved structurally with ElementTree (direct child of
+the root group device) and then located in the text by document-order index -
+the same resolution `sampler/envelope.py` uses for the four `AttackTime` fields,
+for the same reason. A first-match-in-the-root-span search was tried first and
+the verifier caught it on the 19 Latin racks before anything was written.
+
+Scope is the root device only, which is what Live does - nested racks and pad
+Samplers keep their own state. Instrument Rack presets are skipped whole. A root
+Drum Rack with no such field is reported, not repaired: where it would belong in
+an older schema is a guess, and not one worth making for a view preference.
+
 **Ungrouping pad racks (`ungroup.py`, `ungroup_batch.py`):**
 - `ungroup_pads(xml) -> (xml, UngroupReport)` - Live's own "Ungroup" on every
   pad at once: the pad's `GroupDevicePreset` wrapper is replaced by its single
@@ -453,7 +490,7 @@ The cosmetic counterpart to unmapping, measured on a Live 12.4.15 before/after p
 **Purpose:** Terminal interface for all features
 **Dependencies:** `click>=8.0.0` (optional)
 **Commands:**
-- `adc drum-rack create|color|remap|unmap|hide-macros|ungroup`
+- `adc drum-rack create|color|remap|unmap|hide-macros|ungroup|auto-select`
 - `adc sampler create|thin`
 - `adc simpler create`
 - `adc util decode|encode|info`
@@ -771,6 +808,18 @@ instrument, with many zones pointing into regions of it (Ableton's own Pack
 format). Thinning those cuts zones but frees essentially no RAM - `Drum/Ableton`
 is 25182 zones for 0.34 GB - so it is all risk and no reward. Check
 `unique sample files ~= zone count` before adding a library to the list.
+
+## Auto-Select on across the Ableton tree (2026-09-11)
+
+`adc drum-rack auto-select --in-place` over
+`.../Looping Presets/Instruments/Ableton`: 2788 root Drum Racks now have
+Auto-Select on, so playing a pad selects it in the rack view. Only **38 needed
+it** - 2750 were already on, and the 38 were a coherent set: Ableton's own
+`Drum/Packs/Designer Drums` (16), `Perc/Latin` (19) and three `Perc/Shaker Lite`
+racks. 406 Instrument Rack presets skipped, zero verification failures. The
+11896 nested `IsAutoSelectEnabled` fields in those files - nested racks and pad
+Samplers - were left at `false`. Backup of the 38 in
+`/Users/Shared/Music/_backups/Ableton kits before auto-select 2026-09-11/`.
 
 ## Drum-Rack Chain Colors
 

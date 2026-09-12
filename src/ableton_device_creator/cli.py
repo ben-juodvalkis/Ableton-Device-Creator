@@ -23,6 +23,8 @@ from .macro_mapping.hide_macros_batch import HideResult, hide_macros_tree
 from .macro_mapping.hide_macros_batch import write_report as write_hide_report
 from .drum_racks.ungroup_batch import UngroupResult, ungroup_tree
 from .drum_racks.ungroup_batch import write_report as write_ungroup_report
+from .drum_racks.auto_select_batch import AutoSelectResult, set_auto_select_tree
+from .drum_racks.auto_select_batch import write_report as write_auto_select_report
 from .sampler.envelope import ENVELOPES
 from .sampler.envelope_batch import EnvelopeResult, set_envelope_tree
 from .sampler.envelope_batch import write_report as write_env_report
@@ -468,6 +470,106 @@ def drum_rack_hide_macros(root, out_dir, in_place, dry_run, report_path, overwri
             click.echo("  %s: %s" % (f.path, "; ".join(f.failures)))
     if report_path:
         write_hide_report(report, report_path)
+        click.echo("\nReport written to %s" % report_path)
+    if failed:
+        sys.exit(1)
+
+
+@drum_rack.command(name="auto-select")
+@click.argument("root", type=click.Path(exists=True, file_okay=False))
+@click.option(
+    "--on/--off",
+    "enabled",
+    default=True,
+    show_default=True,
+    help="Turn Auto-Select on or off",
+)
+@click.option(
+    "--out",
+    "out_dir",
+    type=click.Path(file_okay=False),
+    help="Output tree; every edited rack is written at its relative path under it",
+)
+@click.option("--in-place", is_flag=True, help="Rewrite the files under ROOT instead of --out")
+@click.option("--dry-run", is_flag=True, help="Classify and report only; write nothing")
+@click.option(
+    "--report", "report_path", type=click.Path(dir_okay=False), help="Write a JSON report here"
+)
+@click.option("--overwrite", is_flag=True, help="Replace files that already exist under --out")
+@click.option(
+    "--copy-unchanged/--no-copy-unchanged",
+    default=True,
+    help=(
+        "Copy every file that is not edited (Instrument Racks, .adv presets) into --out "
+        "unchanged, so --out is a drop-in replacement for ROOT (default: copy)"
+    ),
+)
+def drum_rack_auto_select(
+    root, enabled, out_dir, in_place, dry_run, report_path, overwrite, copy_unchanged
+):
+    """
+    Turn Auto-Select on (or off) on every Drum Rack under ROOT.
+
+    Walks ROOT recursively. For each preset whose root device is a Drum Rack,
+    the root's IsAutoSelectEnabled becomes true, so playing a pad selects that
+    pad in the rack view. Nothing else changes: this is a view preference, and
+    a rack sounds exactly the same either way. Nested racks inside the pads keep
+    their own state, and Instrument Rack presets are skipped and counted.
+
+    Every edited file is re-read and verified against its original; a file that
+    fails is listed and left as it was, and the run continues.
+
+    Examples:
+
+      adc drum-rack auto-select "Looping Presets/Instruments/Ableton" --dry-run
+
+      adc drum-rack auto-select "Looping Presets/Instruments/Ableton" --in-place --report auto.json
+    """
+    if not dry_run and not in_place and out_dir is None:
+        click.secho("Error: --out or --in-place is required unless --dry-run is given", fg="red")
+        sys.exit(2)
+
+    counter = {"n": 0}
+
+    def progress(result: AutoSelectResult) -> None:
+        counter["n"] += 1
+        if dry_run and result.action == "dry-run":
+            click.echo("%-9s was=%-5s %s" % (result.action, result.was_enabled, result.path))
+        elif result.action == "failed":
+            click.secho("FAILED  %s: %s" % (result.path, "; ".join(result.failures)), fg="red")
+        elif not dry_run and counter["n"] % 250 == 0:
+            click.echo("  %d files..." % counter["n"])
+
+    try:
+        report = set_auto_select_tree(
+            root,
+            enabled=enabled,
+            out_dir=out_dir,
+            dry_run=dry_run,
+            in_place=in_place,
+            overwrite=overwrite,
+            copy_unchanged=copy_unchanged,
+            progress=progress,
+        )
+    except (ValueError, FileExistsError, FileNotFoundError) as e:
+        click.secho("Error: %s" % e, fg="red")
+        sys.exit(1)
+
+    click.echo("")
+    click.secho(
+        "Totals (Auto-Select %s)%s:"
+        % ("on" if enabled else "off", " (dry run)" if dry_run else ""),
+        bold=True,
+    )
+    for key, value in report.totals.items():
+        click.echo("  %-32s %d" % (key, value))
+    failed = [f for f in report.files if f.action == "failed"]
+    if failed:
+        click.secho("\n%d file(s) failed and were left as they were:" % len(failed), fg="red")
+        for f in failed:
+            click.echo("  %s: %s" % (f.path, "; ".join(f.failures)))
+    if report_path:
+        write_auto_select_report(report, report_path)
         click.echo("\nReport written to %s" % report_path)
     if failed:
         sys.exit(1)
