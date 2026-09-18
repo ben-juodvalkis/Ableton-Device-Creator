@@ -333,18 +333,27 @@ def _iter_mappings(tree: ET.Element) -> List[_Mapping]:
 
     Ownership follows the preset structure: a ``GroupDevicePreset`` owns everything
     inside it except its own ``Device`` subtree (the rack's own parameters, which
-    belong to the enclosing rack).
+    belong to the enclosing rack) - with one exception, the rack's
+    ``ChainSelector``, which its own macros drive. Top-level racks map it (the
+    Chamber Strings shorts' "Close/Far", the Winds sections' "Articulation") with
+    no outer rack to address, and the Damage Close/Room pad racks map it to their
+    own Macro 7 "Room".
     """
     out: List[_Mapping] = []
 
-    def walk(el: ET.Element, device_class: str, frames: List[List[float]]) -> None:
+    def walk(
+        el: ET.Element,
+        device_class: str,
+        frames: List[List[float]],
+        own: Optional[List[List[float]]] = None,
+    ) -> None:
         if el.tag == "GroupDevicePreset":
             device = el.find("Device")
             rack = device[0] if device is not None and len(device) else None
             frame = _macro_values(rack)
             for child in el:
                 if child.tag == "Device":
-                    walk(child, device_class, frames)
+                    walk(child, device_class, frames, own=frames + [frame])
                 else:
                     walk(child, device_class, frames + [frame])
             return
@@ -361,7 +370,11 @@ def _iter_mappings(tree: ET.Element) -> List[_Mapping]:
                 )
                 continue
             cls = child.tag if el.tag == "Device" else device_class
-            walk(child, cls, frames)
+            if own is not None and el.tag in GROUP_DEVICE_TAGS and child.tag == "ChainSelector":
+                walk(child, cls, own)
+            else:
+                # ``own`` only reaches the rack device itself, one level below ``Device``.
+                walk(child, cls, frames, own if el.tag == "Device" else None)
 
     walk(tree, "", [])
     return out

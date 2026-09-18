@@ -324,6 +324,53 @@ def test_strip_key_midi_removes_root_owned_only():
     assert out.count("\n") == xml.count("\n") - 8 * 9  # the one-line block leaves its line
 
 
+def with_chain_selectors(nested_macro=None, root_macro=None) -> str:
+    """The synthetic kit with a mapped ChainSelector on the nested pad rack and/or the root."""
+    xml = synthetic_drum_rack()
+    if nested_macro is not None:
+        xml = xml.replace(
+            '<MacroDefaults.0 Value="55" />',
+            '<MacroDefaults.0 Value="55" />\n'
+            + param("ChainSelector", "0", 7, macro=nested_macro, rng=("0", "127")),
+        )
+    if root_macro is not None:
+        xml = xml.replace(
+            '\t\t\t\t<MacroDefaults.15 Value="63.5" />',
+            '\t\t\t\t<MacroDefaults.15 Value="63.5" />\n'
+            + param("ChainSelector", "0", 4, macro=root_macro, rng=("0", "127")),
+            1,
+        )
+    return xml
+
+
+def test_a_racks_chain_selector_mapping_belongs_to_that_rack():
+    """Unlike its MacroControls, a rack's ChainSelector is driven by the rack's own macros.
+
+    Measured: top-level Instrument Racks map it (Chamber Strings "Close/Far", Winds
+    "Articulation"), where there is no outer rack to address. Treating a pad rack's
+    as root-owned is what stripped the Damage Close/Room pads' Room crossfade
+    (2026-09-18).
+    """
+    xml = with_chain_selectors(nested_macro=6)
+    info = classify_rack(xml)
+    assert info.key_midi_root == 9 and info.key_midi_nested == 2
+    out, report = unmap_drum_rack(xml)
+    assert ET.fromstring(out).find(".//InstrumentGroupDevice/ChainSelector/KeyMidi") is not None
+    assert report.removed_nested == 0
+    assert verify_unmap(xml, out, report) == []
+
+
+def test_the_root_racks_own_chain_selector_is_root_owned_and_baked():
+    # root macro 4 sits at 63.5; the selector is an integer parameter over 0..127
+    xml = with_chain_selectors(root_macro=3)
+    assert classify_rack(xml).key_midi_root == 10
+    out, report = unmap_drum_rack(xml)
+    root_selector = ET.fromstring(out).find("./GroupDevicePreset/Device/DrumGroupDevice/ChainSelector")
+    assert root_selector.find("KeyMidi") is None
+    assert root_selector.find("Manual").get("Value") == "64"
+    assert verify_unmap(xml, out, report) == []
+
+
 def test_strip_key_midi_include_nested():
     out, removed = strip_key_midi(synthetic_drum_rack(), include_nested=True)
     assert removed == 10

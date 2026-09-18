@@ -461,6 +461,7 @@ presets preserves all of it byte for byte.
 Rules baked into the module, all measured on the library (2026-09-07):
 - Edits are string-level (anchored regexes on the decoded XML). Never re-serialise a Live 12 file through ElementTree for writing: it parses but will not load. ElementTree is read-only here.
 - A `KeyMidi` addresses the macros of the innermost rack around it. Mappings inside a nested rack's chains belong to that rack and stay (Live's unmap on the outer rack behaves the same way); mappings chaining a root macro to a nested rack's macro are root-owned and go.
+- **A rack's own `ChainSelector` is the exception: its own macros drive it**, unlike its `MacroControls.N`, which the enclosing rack drives. Top-level racks map it with no outer rack to address (Chamber Strings shorts "Close/Far", Winds sections "Articulation"). Until 2026-09-18 `unmap` classed a pad rack's chain selector as root-owned and stripped it, which is how the Damage Close/Room pads lost their Room crossfade.
 - Live ignores the stored `Manual` of a mapped parameter and, on unmap, writes the macro-driven value in. Generated kits have stale stored values (attack 0.1 ms where the macro produces 353 ms, transpose 32 where it produces 0), so a plain strip would change the sound. `CURVES` holds the per-parameter interpolation (linear, log, t², t³, t⁵, stepped, switch, fader) with the evidence for each; a parameter with no verified curve keeps its stored value and is reported.
 - `KeyMidi` blocks come in two textual forms: Live's multi-line block, and a one-line block written by older scripts with the `<Manual>` on the same line. Both are handled.
 - Why the mappings are removed rather than re-pointed: the Looping surface (ADR-428) owns every whole-kit gesture as a virtual macro that fans out to each pad's parameters by name; a macro-held parameter is disabled in Live, so the kits must carry no mappings.
@@ -589,6 +590,30 @@ so the two chains always switch layers at the same velocities; the takes
 themselves are independent autosampling passes (different RR ids), so a blend
 is two performances, not two mics of one hit. Output: one combined set in
 `.../User Library/Looping Presets/Instruments/Ableton/Perc/Damage Close-Room`.
+That set is now `Perc/Damage Lite` (thinned) and `xFull/Damage` (full).
+
+**The Room crossfade was lost to `unmap` and is being restored (2026-09-18).**
+The unmap run treated each pad rack's chain-selector mapping as root-owned and
+stripped it, so "Room" turned nothing and every pad sat on the Close mic.
+`scripts/map_close_room_chain_selector.py` puts it back: one `KeyMidi`
+(Channel 16, macro 6) in each pad rack's `ChainSelector`, driven by the pad's
+own Macro 7 "Room" - the Looping surface drives "Room" per pad by name, so the
+root still carries no mappings. Reproduces Live 12.4.15's own remap of
+`Damage Lite/Acoustic/Ethnic Drums` byte for byte (`--golden`: 33 of 33 chain
+selectors identical). A pad is written only if it is unambiguously a Close/Room
+pad and its Room macro already sits where the selector does, so nothing
+audible changes on load. Nothing else was hit: of 4289 kits under
+`Instruments/`, these are the only ones whose pad racks use the chain selector
+at all. All 136 racks (4124 pads) qualified; the output is
+staged in `/Users/Shared/Music/_staging/Damage Room mapping 2026-09-18/`
+(mirrors the `Instruments/` tree) for validation in Live before replacing.
+
+**Only the Close Sampler follows the pad macros.** In every pad, the donor maps
+the Close chain's Sampler to the pad rack's six macros (Attack, Release,
+Transpose, Osc, Pitch Attack, Pitch Amount) and the Room chain's Sampler to
+none. Invisible while Room was stuck at 0; with the crossfade working, turning
+Room up moves the sound onto a Sampler those macros do not reach. It is also
+why `set-env` found exactly half the Close/Room Samplers macro-held.
 
 ## Round-Robin Drum Racks (no velocity/note metadata)
 
