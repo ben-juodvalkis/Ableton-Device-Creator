@@ -698,6 +698,17 @@ map is identical across all 100 racks and a clip written for one borough
 triggers the same types in any other. Output: `5 Boroughs` alongside the other
 numbered subfolders.
 
+**Now paired, two boroughs per rack (2026-09-23).** `scripts/pair_boroughs_racks.py`
+combined the 100 racks into 50 (`Croydon + Crunk my Sub`), alphabetical pairs,
+kit B at notes 76..65 like every other Electro Acoustic rack. It builds from the
+*library* racks, not from source: the donor is a `2 Electro Acoustic` pair rack
+(all 37 are identical apart from each pad's `SampleRef` and name), so the macro
+batch edit, `unmap` and `hide-macros` that the library racks have had since
+generation carry over. A fresh `create_boroughs_racks.py` run would undo them,
+and its `OUTPUT_ROOT` (`Drum/Prod/...`) is stale besides - the set now lives at
+`.../Ableton/Drum/Electro Acoustic/`. The 100 single racks are backed up in
+`/Users/Shared/Music/_backups/5 Boroughs single racks 2026-09-23/`.
+
 **Known source glitches** (pads left empty, reported not filled): 40 of the
 100 boroughs are missing a middle slot — 35 lack `08-Tom-Alt`, 3 lack
 `07-HiHat-Open`, and `Hexagon Projection` / `In Another Space` lack both
