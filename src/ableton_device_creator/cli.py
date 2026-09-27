@@ -156,7 +156,6 @@ def drum_rack_create(samples_dir, output, template, layout, categorize, recursiv
                 samples_dir=samples_dir, output=output, categorize=categorize, recursive=recursive
             )
 
-        click.secho(f"✓ Created drum rack: {result}", fg="green")
         click.echo(f"  File size: {result.stat().st_size / 1024:.1f} KB")
 
     except Exception as e:

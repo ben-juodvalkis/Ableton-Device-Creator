@@ -204,7 +204,7 @@ encode_adg(modified_xml, "MyRack_Modified.adg")
 
 ## CLI Reference
 
-Full CLI documentation: [docs/CLI_GUIDE.md](docs/CLI_GUIDE.md)
+Full CLI documentation: [docs/CLI_GUIDE.md](https://github.com/ben-juodvalkis/Ableton-Device-Creator/blob/main/docs/CLI_GUIDE.md)
 
 ### Drum Rack Commands
 
@@ -319,7 +319,7 @@ Two conventions matter when adding one:
   never silently drop or interpolate them.
 
 Per-library specifics — source paths, note layouts, known export glitches — are
-documented in [CLAUDE.md](CLAUDE.md).
+documented in [CLAUDE.md](https://github.com/ben-juodvalkis/Ableton-Device-Creator/blob/main/CLAUDE.md).
 
 ---
 
@@ -442,7 +442,8 @@ device = creator.from_sample(
 - **Python 3.8+**
 - **Core:** Zero dependencies (stdlib only)
 - **CLI:** `click>=8.0.0` (optional, install with `pip install "ableton-device-creator[cli] @ git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"`)
-- **Ableton Live 11+** (for testing generated devices)
+- **Ableton Live 12.1 or later** to open the generated devices (the bundled templates
+  were saved in Live 12; the Simpler template needs 12.2 or later)
 
 ---
 
@@ -471,14 +472,23 @@ This toolkit:
 
 ## Version History
 
-### V3.0.0 (2025-11-29)
+### V3.0.0 (2026-09-27) - first public release
 
-**Complete rewrite as modern Python package**
+Added since the November 2025 alpha:
+- `adc drum-rack unmap`, `hide-macros`, `ungroup`, `auto-select` - batch
+  edits to existing kits, each verified against the original file
+- `adc sampler thin` and `adc sampler set-env` - lighter multisample racks and
+  batch envelope edits
+- The default templates ship inside the package, so it works from any folder
+- `drum-rack create` deletes the pads it doesn't fill, and categorizes a flat
+  folder by filename
+
+**Complete rewrite as modern Python package** (3.0.0-alpha.1, 2025-11-29)
 
 **New:**
 - ✅ Installable Python package with pip
 - ✅ Clean API with high-level classes
-- ✅ CLI tool with 11 commands
+- ✅ CLI tool with 14 commands
 - ✅ Comprehensive documentation
 - ✅ Production-tested with real samples
 - ✅ Type hints throughout
@@ -531,10 +541,10 @@ This project prioritizes **production-proven code** over extensive test coverage
 
 ## Documentation
 
-- **[CLI Guide](docs/CLI_GUIDE.md)** - Complete CLI reference
-- **[CLAUDE.md](CLAUDE.md)** - Project context for AI assistants
-- **[Examples](examples/)** - Python API examples
-- **[V3 Implementation Plan](docs/current-plan/V3_IMPLEMENTATION_PLAN.md)** - Development roadmap
+- **[CLI Guide](https://github.com/ben-juodvalkis/Ableton-Device-Creator/blob/main/docs/CLI_GUIDE.md)** - Complete CLI reference
+- **[CLAUDE.md](https://github.com/ben-juodvalkis/Ableton-Device-Creator/blob/main/CLAUDE.md)** - Project context for AI assistants
+- **[Examples](https://github.com/ben-juodvalkis/Ableton-Device-Creator/tree/main/examples)** - Python API examples
+- **[V3 Implementation Plan](https://github.com/ben-juodvalkis/Ableton-Device-Creator/blob/main/docs/current-plan/V3_IMPLEMENTATION_PLAN.md)** - Development roadmap
 
 ---
 
@@ -570,7 +580,7 @@ Built for the Ableton Live community with 2+ years of production use.
 
 - **Issues:** [GitHub Issues](https://github.com/ben-juodvalkis/Ableton-Device-Creator/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/ben-juodvalkis/Ableton-Device-Creator/discussions)
-- **Documentation:** [docs/](docs/)
+- **Documentation:** [docs/](https://github.com/ben-juodvalkis/Ableton-Device-Creator/tree/main/docs)
 
 ---
 

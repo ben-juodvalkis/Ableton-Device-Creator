@@ -294,6 +294,7 @@ class DrumRackCreator:
             )
 
             replaced_count = 0
+            filled = set()
 
             # Process each sample
             for sample_index, sample_path in enumerate(sample_paths):
@@ -304,6 +305,7 @@ class DrumRackCreator:
                     continue
 
                 pad = drum_pads[sample_index]
+                filled.add(id(pad))
 
                 # Find DrumCell devices within this pad
                 drum_cells = pad.findall(".//DrumCell")
@@ -329,6 +331,14 @@ class DrumRackCreator:
                             replaced_count += 1
 
             print(f"  Replaced {replaced_count} sample reference(s)")
+
+            # Delete the pads left unfilled. Otherwise they keep sounding the
+            # template's own samples - files that exist only on the machine
+            # the template was saved on. The remaining pads keep their notes.
+            parents = {child: parent for parent in root.iter() for child in parent}
+            for pad in drum_pads:
+                if id(pad) not in filled:
+                    parents[pad].remove(pad)
 
             # Convert back to string
             return ET.tostring(root, encoding='unicode', xml_declaration=True)

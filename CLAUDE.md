@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Ableton Device Creator V3.0** is a modern Python library for creating and modifying Ableton Live devices (drum racks, sampler instruments, and Simpler devices) from audio sample libraries.
 
 **Status:** Production-ready, actively maintained
-**Version:** 3.0.0 (November 2025)
+**Version:** 3.0.0 (first public release 2026-09-27; alpha November 2025)
 **Python:** 3.8+
 **Dependencies:** Zero (core), Click 8.0+ (CLI optional)
 
@@ -910,6 +910,32 @@ shaker 26, percussion 13, tonal/other 0.
 3. Save as preset
 4. Remove sample references if needed
 5. Test with toolkit
+
+**Bundled defaults.** `input_rack.adg`, `sampler-rack.adg` and
+`simpler-template.adv` are also shipped inside the package at
+`src/ableton_device_creator/templates/` (see `bundled.py`) - a pip install has
+no repo checkout, so `templates/...` relative paths only work from a clone.
+`DrumRackCreator()` / `SamplerCreator()` / `SimplerCreator()` and the CLI's
+`--template` fall back to them. The two copies must stay byte-identical;
+`tests/test_bundled_templates.py` enforces it, so replace both together.
+
+`DrumRackCreator` deletes every pad it doesn't fill (the Electro Acoustic
+scripts' pattern). Before 2026-09-27 unfilled pads kept the template's own
+samples - files on Ben's machine only. The template's `SourceContext` and own
+`LastPresetRef` paths still carry that provenance; inert, left alone per the
+rebuild-in-Live rule.
+
+## Releasing
+
+Published on PyPI as `ableton-device-creator`. The version lives only in
+`src/ableton_device_creator/__init__.py` (`pyproject.toml` reads it). To
+release: bump it, run `pytest`, commit and push, then
+`gh release create vX.Y.Z`. Publishing the release runs
+`.github/workflows/publish.yml`, which builds once, attaches the wheel and
+sdist to the release, and uploads the same files to PyPI through trusted
+publishing (OIDC, environment `pypi`) - there is no PyPI token anywhere.
+Supported Python is measured, not assumed: the suite passed on 3.8-3.14
+(2026-09-27) and `tests.yml` runs 3.8/3.10/3.12/3.14 on every push.
 
 ## Output
 

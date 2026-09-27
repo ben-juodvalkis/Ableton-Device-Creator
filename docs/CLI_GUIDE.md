@@ -499,14 +499,6 @@ sys.argv = ['adc', 'drum-rack', 'create', 'samples/', '-o', 'output.adg']
 main()
 ```
 
-### Environment Variables
-
-Set default paths:
-```bash
-export ADC_TEMPLATES="/path/to/templates"
-export ADC_OUTPUT="/path/to/output"
-```
-
 ---
 
 ## See Also

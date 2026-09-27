@@ -31,7 +31,7 @@ Basic Usage:
     >>> modifier.remap_notes(shift=12).save("Remapped.adg")
 """
 
-__version__ = "3.0.0-alpha.1"
+__version__ = "3.0.0"
 __author__ = "Ben Juodvalkis"
 __license__ = "MIT"
 

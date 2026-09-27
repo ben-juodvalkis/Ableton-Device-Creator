@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ableton-device-creator"
-version = "3.0.0-alpha.1"
+dynamic = ["version"]
 description = "Professional toolkit for Ableton Live device creation and modification"
 authors = [
-    {name = "Ben Juodvalkis", email = "ben@example.com"}
+    {name = "Ben Juodvalkis"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
@@ -22,6 +22,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 keywords = ["ableton", "audio", "music-production", "device-creation"]
 
@@ -42,6 +44,8 @@ adc = "ableton_device_creator.cli:main"
 [project.urls]
 Homepage = "https://github.com/ben-juodvalkis/Ableton-Device-Creator"
 Repository = "https://github.com/ben-juodvalkis/Ableton-Device-Creator"
+Documentation = "https://github.com/ben-juodvalkis/Ableton-Device-Creator/blob/main/docs/CLI_GUIDE.md"
+Changelog = "https://github.com/ben-juodvalkis/Ableton-Device-Creator/releases"
 Issues = "https://github.com/ben-juodvalkis/Ableton-Device-Creator/issues"
 
 [tool.setuptools]
@@ -49,6 +53,9 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "ableton_device_creator.__version__"}
 
 [tool.setuptools.package-data]
 ableton_device_creator = ["templates/*.adg", "templates/*.adv"]

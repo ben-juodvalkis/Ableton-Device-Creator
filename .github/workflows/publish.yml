@@ -1,0 +1,50 @@
+name: Publish to PyPI
+
+# Runs when a GitHub release is published: builds once, attaches the files to
+# the release, and uploads the same files to PyPI. Uses PyPI trusted publishing
+# (OIDC), so no API token is stored anywhere - PyPI trusts this workflow file
+# in this repo, configured once on pypi.org.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # attach the built files to the release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          activate-environment: true
+      - run: uv pip install "build[uv]" && python -m build --installer uv
+      - name: Smoke-test the wheel outside the checkout
+        run: |
+          uv pip install dist/*.whl click
+          cd /tmp && adc --version && python -c "from ableton_device_creator.drum_racks import DrumRackCreator; DrumRackCreator()"
+      - name: Attach to the GitHub release
+        if: github.event_name == 'release'
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
