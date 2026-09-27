@@ -11,10 +11,7 @@ from typing import Optional
 try:
     import click
 except ImportError:
-    print(
-        "Error: Click is not installed. Install with: pip install "
-        '"ableton-device-creator[cli] @ git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"'
-    )
+    print('Error: Click is not installed. Install with: pip install "ableton-device-creator[cli]"')
     sys.exit(1)
 
 from . import __version__

@@ -4,11 +4,9 @@ Command-line interface for creating and modifying Ableton Live devices.
 
 ## Installation
 
-The package is not on PyPI yet; install it from GitHub.
-
 ### Install with CLI support:
 ```bash
-pip install "ableton-device-creator[cli] @ git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"
+pip install "ableton-device-creator[cli]"
 ```
 
 ### Or, from a clone of the repo:
@@ -458,7 +456,7 @@ adc simpler create samples/fx/ -o "output/simplers/fx/"
 
 ### Click Not Installed
 ```
-Error: Click is not installed. Install with: pip install "ableton-device-creator[cli] @ git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"
+Error: Click is not installed. Install with: pip install "ableton-device-creator[cli]"
 ```
 **Solution:** Install Click: `pip install "click>=8.0.0"`
 

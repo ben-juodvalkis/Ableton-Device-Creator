@@ -23,13 +23,14 @@ Modern Python library for programmatically creating and modifying Ableton Live d
 
 ### Installation
 
-The package is not on PyPI yet, so install it straight from GitHub:
-
 ```bash
 # Install the package (Python API only, zero dependencies)
-pip install "git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"
+pip install ableton-device-creator
 
 # Or with the `adc` command-line tool
+pip install "ableton-device-creator[cli]"
+
+# Or the latest unreleased code from GitHub
 pip install "ableton-device-creator[cli] @ git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"
 
 # Or install from source (editable, for development)
@@ -441,7 +442,7 @@ device = creator.from_sample(
 
 - **Python 3.8+**
 - **Core:** Zero dependencies (stdlib only)
-- **CLI:** `click>=8.0.0` (optional, install with `pip install "ableton-device-creator[cli] @ git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"`)
+- **CLI:** `click>=8.0.0` (optional, install with `pip install "ableton-device-creator[cli]"`)
 - **Ableton Live 12.1 or later** to open the generated devices (the bundled templates
   were saved in Live 12; the Simpler template needs 12.2 or later)
 
