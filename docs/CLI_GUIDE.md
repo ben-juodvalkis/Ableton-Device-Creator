@@ -57,7 +57,9 @@ adc drum-rack create SAMPLES_DIR [OPTIONS]
 - `-o, --output PATH` - Output ADG file path (default: `output/<folder_name>.adg`)
 - `-t, --template PATH` - Template ADG file (default: bundled `input_rack.adg`)
 - `--layout [standard|808|percussion]` - MIDI note layout (default: `standard`)
-- `--categorize / --no-categorize` - Auto-categorize samples (default: enabled)
+- `--categorize / --no-categorize` - Auto-categorize samples (default: enabled). A folder with
+  `Kick/`, `Snare/`, `Hat/`... subfolders is placed pad-by-category using `--layout`; a flat
+  folder is categorized by filename keywords instead (`--layout` does not apply)
 - `--recursive / --no-recursive` - Search subdirectories (default: enabled)
 
 **Examples:**

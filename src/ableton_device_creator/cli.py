@@ -19,7 +19,7 @@ except ImportError:
 
 from . import __version__
 from .bundled import DRUM_RACK_TEMPLATE, SAMPLER_TEMPLATE, SIMPLER_TEMPLATE
-from .drum_racks import DrumRackCreator, DrumRackModifier
+from .drum_racks import DrumRackCreator, DrumRackModifier, categorize_by_folder
 from .sampler import SamplerCreator, SimplerCreator
 from .macro_mapping import DrumPadColorMapper
 from .macro_mapping.unmap_batch import FileResult, unmap_tree, write_report
@@ -142,13 +142,18 @@ def drum_rack_create(samples_dir, output, template, layout, categorize, recursiv
     try:
         creator = DrumRackCreator(template=template)
 
-        if categorize:
+        by_folder = categorize_by_folder(samples_dir) if categorize else {}
+        if any(files for cat, files in by_folder.items() if cat != "uncategorized"):
             result = creator.from_categorized_folders(
                 samples_dir=samples_dir, output=output, layout=layout
             )
         else:
+            # A flat folder has no Kick/Snare/... subfolders to place by, so
+            # categorize by filename keywords instead of failing.
+            if categorize:
+                click.echo("No category subfolders found; categorizing by filename")
             result = creator.from_folder(
-                samples_dir=samples_dir, output=output, categorize=False, recursive=recursive
+                samples_dir=samples_dir, output=output, categorize=categorize, recursive=recursive
             )
 
         click.secho(f"✓ Created drum rack: {result}", fg="green")
