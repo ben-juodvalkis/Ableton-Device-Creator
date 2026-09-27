@@ -77,8 +77,10 @@ adc drum-rack create samples/ --layout 808
 adc drum-rack create samples/ --no-recursive --no-categorize
 ```
 
-**Layouts:**
-- `standard` - Kicks at C1, snares at D1, hats at F#1, etc.
+**Layouts** (used for folders with category subfolders). Each places categories
+at General MIDI drum offsets, counted from the rack's first pad - with the
+bundled template that pad is E3 (MIDI 64), so kicks start at E3, not C1:
+- `standard` - kick on pad 1, snare on pad 5, hats on pad 7, etc.
 - `808` - Classic TR-808 layout
 - `percussion` - Optimized for percussion samples
 

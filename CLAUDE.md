@@ -176,7 +176,9 @@ __all__ = [..., "NewFeature"]
 ## Important Script Behaviors
 
 ### Drum Rack Scripts
-- Creates 32-pad drum racks (C1 to G3, MIDI notes 36-67)
+- Creates up to 32 pads on the bundled template's notes, E3 to B5 (MIDI 64-95),
+  seen in Live 2026-09-27 - not C1-G3 as the layout tables' GM numbers suggest;
+  those are offsets from the first pad. Unfilled pads are deleted.
 - Auto-categorizes samples by type (kick, snare, hat, clap, tom, cymbal, perc)
 - Multiple layouts: standard, 808, percussion
 - Supports velocity layers

@@ -184,7 +184,7 @@ class DrumRackCreator:
                 for i, sample in enumerate(samples[:4]):
                     if pad_index + i < 32:
                         sample_list[pad_index + i] = str(sample.absolute())
-                        print(f"  {category}: {sample.name} → Pad {pad_index + i + 1} (Note {start_note + i})")
+                        print(f"  {category}: {sample.name} → Pad {pad_index + i + 1}")
 
         # Remove trailing Nones
         while sample_list and sample_list[-1] is None:
