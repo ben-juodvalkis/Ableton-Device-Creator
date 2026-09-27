@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import logging
 
 from ..core import decode_adg, encode_adg
+from ..bundled import SAMPLER_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
@@ -29,17 +30,18 @@ class SamplerCreator:
         >>> sampler = creator.from_folder("/samples", output="MySampler.adg")
     """
 
-    def __init__(self, template: Union[str, Path]):
+    def __init__(self, template: Optional[Union[str, Path]] = None):
         """
         Initialize creator with template.
 
         Args:
             template: Path to template ADG/ADV file with Multi-Sampler
+                (default: the template bundled with the package)
 
         Raises:
             FileNotFoundError: If template doesn't exist
         """
-        self.template = Path(template)
+        self.template = Path(template) if template is not None else SAMPLER_TEMPLATE
         if not self.template.exists():
             raise FileNotFoundError(f"Template not found: {self.template}")
 

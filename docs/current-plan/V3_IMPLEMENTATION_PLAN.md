@@ -130,7 +130,6 @@ adc = "ableton_device_creator.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/ben-juodvalkis/Ableton-Device-Creator"
-Documentation = "https://ableton-device-creator.readthedocs.io"
 Repository = "https://github.com/ben-juodvalkis/Ableton-Device-Creator"
 Issues = "https://github.com/ben-juodvalkis/Ableton-Device-Creator/issues"
 

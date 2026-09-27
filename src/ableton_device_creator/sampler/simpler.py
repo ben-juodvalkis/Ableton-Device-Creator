@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import logging
 
 from ..core import decode_adg, encode_adg
+from ..bundled import SIMPLER_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
@@ -25,17 +26,18 @@ class SimplerCreator:
         >>> creator.from_folder("/samples", output_folder="output/simplers/")
     """
 
-    def __init__(self, template: Union[str, Path]):
+    def __init__(self, template: Optional[Union[str, Path]] = None):
         """
         Initialize creator with template.
 
         Args:
             template: Path to template ADV file with Simpler device
+                (default: the template bundled with the package)
 
         Raises:
             FileNotFoundError: If template doesn't exist
         """
-        self.template = Path(template)
+        self.template = Path(template) if template is not None else SIMPLER_TEMPLATE
         if not self.template.exists():
             raise FileNotFoundError(f"Template not found: {self.template}")
 

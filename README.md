@@ -23,18 +23,24 @@ Modern Python library for programmatically creating and modifying Ableton Live d
 
 ### Installation
 
-```bash
-# Install the package
-pip install ableton-device-creator
+The package is not on PyPI yet, so install it straight from GitHub:
 
-# Or install from source
+```bash
+# Install the package (Python API only, zero dependencies)
+pip install "git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"
+
+# Or with the `adc` command-line tool
+pip install "ableton-device-creator[cli] @ git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"
+
+# Or install from source (editable, for development)
 git clone https://github.com/ben-juodvalkis/Ableton-Device-Creator.git
 cd "Ableton-Device-Creator"
-pip install -e .
-
-# Optional: Install CLI support
-pip install ableton-device-creator[cli]
+pip install -e ".[cli]"
 ```
+
+The default drum rack, Sampler and Simpler templates ship inside the package,
+so every example below works from any folder. Pass `template=` (or
+`--template` on the CLI) to build from your own device instead.
 
 ### Basic Usage (Python API)
 
@@ -43,11 +49,11 @@ from ableton_device_creator.drum_racks import DrumRackCreator
 from ableton_device_creator.sampler import SamplerCreator
 
 # Create drum rack from samples
-creator = DrumRackCreator(template="templates/input_rack.adg")
+creator = DrumRackCreator()
 rack = creator.from_folder("samples/drums/", output="MyKit.adg")
 
 # Create chromatic sampler
-sampler = SamplerCreator(template="templates/sampler-rack.adg")
+sampler = SamplerCreator()
 instrument = sampler.from_folder("samples/", layout="chromatic")
 ```
 
@@ -77,7 +83,7 @@ adc util info MyKit.adg
 from ableton_device_creator.drum_racks import DrumRackCreator, DrumRackModifier
 
 # Create from folder with auto-categorization
-creator = DrumRackCreator("templates/input_rack.adg")
+creator = DrumRackCreator()
 rack = creator.from_categorized_folders(
     "samples/drums/",
     layout="808",  # or "standard", "percussion"
@@ -168,11 +174,11 @@ Use `hide_macros_tree(root, in_place=True)` to sweep a whole library.
 from ableton_device_creator.sampler import SamplerCreator, SimplerCreator
 
 # Create chromatic sampler (maps samples to consecutive notes)
-sampler = SamplerCreator("templates/sampler-rack.adg")
+sampler = SamplerCreator()
 sampler.from_folder("samples/", layout="chromatic")
 
 # Create Simpler devices (one per sample)
-simpler = SimplerCreator("templates/simpler-template.adv")
+simpler = SimplerCreator()
 simpler.from_folder("samples/", output_folder="simplers/")
 ```
 
@@ -337,7 +343,7 @@ adc drum-rack remap MyKit.adg --shift 12 -o MyKit_High.adg
 ```python
 from ableton_device_creator.sampler import SamplerCreator
 
-creator = SamplerCreator("templates/sampler-rack.adg")
+creator = SamplerCreator()
 
 # Create samplers for different categories
 creator.from_folder("samples/kicks/", output="Kicks_Chromatic.adg")
@@ -351,7 +357,7 @@ creator.from_folder("samples/hats/", output="Hats_Chromatic.adg")
 from pathlib import Path
 from ableton_device_creator.drum_racks import DrumRackCreator
 
-creator = DrumRackCreator("templates/input_rack.adg")
+creator = DrumRackCreator()
 
 # Process all subfolders
 for folder in Path("samples").iterdir():
@@ -368,7 +374,8 @@ for folder in Path("samples").iterdir():
 ```python
 from ableton_device_creator.drum_racks import DrumRackCreator
 
-creator = DrumRackCreator(template="templates/input_rack.adg")
+# Uses the bundled template; pass template="MyTemplate.adg" to use your own
+creator = DrumRackCreator()
 
 # Simple mode - fill pads sequentially
 rack = creator.from_folder(
@@ -390,7 +397,8 @@ rack = creator.from_categorized_folders(
 ```python
 from ableton_device_creator.sampler import SamplerCreator
 
-creator = SamplerCreator(template="templates/sampler-rack.adg")
+# Uses the bundled template; pass template="MySampler.adg" to use your own
+creator = SamplerCreator()
 
 # Chromatic layout (C-2 upward)
 sampler = creator.from_folder(
@@ -411,7 +419,8 @@ sampler = creator.from_folder(
 ```python
 from ableton_device_creator.sampler import SimplerCreator
 
-creator = SimplerCreator(template="templates/simpler-template.adv")
+# Uses the bundled template; pass template="MySimpler.adv" to use your own
+creator = SimplerCreator()
 
 # Batch create (one .adv per sample)
 devices = creator.from_folder(
@@ -432,7 +441,7 @@ device = creator.from_sample(
 
 - **Python 3.8+**
 - **Core:** Zero dependencies (stdlib only)
-- **CLI:** `click>=8.0.0` (optional, install with `pip install ableton-device-creator[cli]`)
+- **CLI:** `click>=8.0.0` (optional, install with `pip install "ableton-device-creator[cli] @ git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"`)
 - **Ableton Live 11+** (for testing generated devices)
 
 ---

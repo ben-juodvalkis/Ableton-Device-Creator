@@ -50,6 +50,9 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+ableton_device_creator = ["templates/*.adg", "templates/*.adv"]
+
 [tool.black]
 line-length = 100
 target-version = ['py38', 'py39', 'py310', 'py311']
@@ -67,3 +70,6 @@ extend-exclude = '''
   | dist
 )/
 '''
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

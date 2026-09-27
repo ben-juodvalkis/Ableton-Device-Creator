@@ -4,15 +4,25 @@ Command-line interface for creating and modifying Ableton Live devices.
 
 ## Installation
 
+The package is not on PyPI yet; install it from GitHub.
+
 ### Install with CLI support:
 ```bash
-pip install ableton-device-creator[cli]
+pip install "ableton-device-creator[cli] @ git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"
 ```
 
-### Or install Click separately:
+### Or, from a clone of the repo:
 ```bash
-pip install click>=8.0.0
+pip install -e ".[cli]"
 ```
+
+### Already installed without the CLI? Add Click:
+```bash
+pip install "click>=8.0.0"
+```
+
+The default templates ship inside the package, so `--template` is only needed
+to build from your own device.
 
 ## Quick Start
 
@@ -45,7 +55,7 @@ adc drum-rack create SAMPLES_DIR [OPTIONS]
 
 **Options:**
 - `-o, --output PATH` - Output ADG file path (default: `output/<folder_name>.adg`)
-- `-t, --template PATH` - Template ADG file (default: `templates/input_rack.adg`)
+- `-t, --template PATH` - Template ADG file (default: bundled `input_rack.adg`)
 - `--layout [standard|808|percussion]` - MIDI note layout (default: `standard`)
 - `--categorize / --no-categorize` - Auto-categorize samples (default: enabled)
 - `--recursive / --no-recursive` - Search subdirectories (default: enabled)
@@ -214,7 +224,7 @@ adc sampler create SAMPLES_DIR [OPTIONS]
 
 **Options:**
 - `-o, --output PATH` - Output ADG file (default: `output/<folder>_sampler.adg`)
-- `-t, --template PATH` - Template ADG file (default: `templates/sampler-rack.adg`)
+- `-t, --template PATH` - Template ADG file (default: bundled `sampler-rack.adg`)
 - `--layout [chromatic|drum|percussion]` - Key mapping (default: `chromatic`)
 - `--max-samples INTEGER` - Max samples per instrument (default: 32)
 
@@ -248,7 +258,7 @@ adc simpler create SAMPLES_DIR [OPTIONS]
 
 **Options:**
 - `-o, --output-folder PATH` - Output folder (default: `output/<folder>_simplers`)
-- `-t, --template PATH` - Template ADV file (default: `templates/simpler-template.adv`)
+- `-t, --template PATH` - Template ADV file (default: bundled `simpler-template.adv`)
 - `--recursive / --no-recursive` - Search subdirectories (default: no)
 
 **Examples:**
@@ -444,13 +454,13 @@ adc simpler create samples/fx/ -o "output/simplers/fx/"
 
 ### Click Not Installed
 ```
-Error: Click is not installed. Install with: pip install ableton-device-creator[cli]
+Error: Click is not installed. Install with: pip install "ableton-device-creator[cli] @ git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"
 ```
-**Solution:** Install Click: `pip install click>=8.0.0`
+**Solution:** Install Click: `pip install "click>=8.0.0"`
 
 ### Template Not Found
 ```
-Error: Template not found: templates/input_rack.adg
+Error: Template not found: my_template.adg
 ```
 **Solution:** Specify template path: `--template /path/to/template.adg`
 

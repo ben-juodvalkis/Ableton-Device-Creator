@@ -11,10 +11,14 @@ from typing import Optional
 try:
     import click
 except ImportError:
-    print("Error: Click is not installed. Install with: pip install ableton-device-creator[cli]")
+    print(
+        "Error: Click is not installed. Install with: pip install "
+        '"ableton-device-creator[cli] @ git+https://github.com/ben-juodvalkis/Ableton-Device-Creator.git"'
+    )
     sys.exit(1)
 
 from . import __version__
+from .bundled import DRUM_RACK_TEMPLATE, SAMPLER_TEMPLATE, SIMPLER_TEMPLATE
 from .drum_racks import DrumRackCreator, DrumRackModifier
 from .sampler import SamplerCreator, SimplerCreator
 from .macro_mapping import DrumPadColorMapper
@@ -86,8 +90,8 @@ def drum_rack():
     "-t",
     "--template",
     type=click.Path(exists=True),
-    default="templates/input_rack.adg",
-    help="Template ADG file to use",
+    default=None,
+    help="Template ADG file to use (default: the one bundled with the package)",
 )
 @click.option(
     "--layout",
@@ -123,7 +127,7 @@ def drum_rack_create(samples_dir, output, template, layout, categorize, recursiv
       adc drum-rack create samples/ --layout 808
     """
     samples_dir = Path(samples_dir)
-    template = Path(template)
+    template = Path(template) if template else DRUM_RACK_TEMPLATE
 
     if not template.exists():
         click.secho(f"Error: Template not found: {template}", fg="red")
@@ -953,8 +957,8 @@ def sampler_thin(
     "-t",
     "--template",
     type=click.Path(exists=True),
-    default="templates/sampler-rack.adg",
-    help="Template ADG file to use",
+    default=None,
+    help="Template ADG file to use (default: the one bundled with the package)",
 )
 @click.option(
     "--layout",
@@ -991,7 +995,7 @@ def sampler_create(samples_dir, output, template, layout, max_samples):
       adc sampler create samples/ --max-samples 16
     """
     samples_dir = Path(samples_dir)
-    template = Path(template)
+    template = Path(template) if template else SAMPLER_TEMPLATE
 
     if not template.exists():
         click.secho(f"Error: Template not found: {template}", fg="red")
@@ -1042,8 +1046,8 @@ def simpler():
     "-t",
     "--template",
     type=click.Path(exists=True),
-    default="templates/simpler-template.adv",
-    help="Template ADV file to use",
+    default=None,
+    help="Template ADV file to use (default: the one bundled with the package)",
 )
 @click.option(
     "--recursive/--no-recursive",
@@ -1068,7 +1072,7 @@ def simpler_create(samples_dir, output_folder, template, recursive):
       adc simpler create samples/ -o my_simplers/
     """
     samples_dir = Path(samples_dir)
-    template = Path(template)
+    template = Path(template) if template else SIMPLER_TEMPLATE
 
     if not template.exists():
         click.secho(f"Error: Template not found: {template}", fg="red")

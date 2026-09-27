@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Union
 import xml.etree.ElementTree as ET
 
 from ..core import decode_adg, encode_adg
+from ..bundled import DRUM_RACK_TEMPLATE
 from .sample_utils import (
     categorize_samples,
     categorize_by_folder,
@@ -33,17 +34,18 @@ class DrumRackCreator:
         PosixPath('output/MyRack.adg')
     """
 
-    def __init__(self, template: Union[str, Path]):
+    def __init__(self, template: Optional[Union[str, Path]] = None):
         """
         Initialize creator with template ADG file.
 
         Args:
             template: Path to template drum rack ADG file
+                (default: the template bundled with the package)
 
         Raises:
             FileNotFoundError: If template doesn't exist
         """
-        self.template = Path(template)
+        self.template = Path(template) if template is not None else DRUM_RACK_TEMPLATE
         if not self.template.exists():
             raise FileNotFoundError(f"Template not found: {self.template}")
 
