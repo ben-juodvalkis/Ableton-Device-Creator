@@ -717,6 +717,28 @@ and its `OUTPUT_ROOT` (`Drum/Prod/...`) is stale besides - the set now lives at
 `06-Tom-Hi` and `08-Tom-Alt`. Re-exporting those from Kontakt and re-running
 would fill the holes. The other never-exported category is `Focus Tuned`.
 
+## Public Export of the NI Expansions Racks (2026-09-29)
+
+`scripts/export_ni_racks_public.py` (`--plan` to dry-run) packages the 1656
+Sidebar racks built on NI Maschine Expansions (`Drum/NI Acoustic|Analog|Digital`,
+`Perc/NI Expansions/*`) as a shareable Live Project - racks only, no audio -
+staged at `/Users/Shared/Music/_staging/Drum Racks for NI Expansions Project`
+(+ `.zip`). Layout: empty `Ableton Project Info/` (Live 12 leaves it empty in
+every project on this machine), Live's own factory `DefaultLiveSet.als` copied
+untouched (Ben's `Templates/Untitled.als` carries his M4L devices and repo
+paths), a `README.txt` with the not-affiliated disclaimer, relink steps and the
+78 expansions used, and `Drum/`/`Perc/` with "NI" dropped from folder names.
+
+The recipient relinks with File Manager > Manage Project > Locate against their
+own Expansions folder, so **sample refs are left exactly as they are** - name
+and `OriginalFileSize` are what Live's search matches. Only provenance is
+cleared, measured as the only other path-bearing fields: every pad chain's
+`SourceContext` (all 52992 pointed at `Samples Organized/Atmospheres/Ambient` -
+an unrelated library - reset to Live's empty `<Value />` form) and both
+`FilePresetRef`s per rack (into the Looping repo; Path/RelativePath blanked).
+The verifier checks sample refs are identical, nothing else moved, and no
+non-sample path survives.
+
 ## Chamber Strings Long Sampler Patches
 
 **Purpose:** flat single-Sampler `.adv` building blocks for the Spitfire
