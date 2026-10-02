@@ -717,6 +717,25 @@ and its `OUTPUT_ROOT` (`Drum/Prod/...`) is stale besides - the set now lives at
 `06-Tom-Hi` and `08-Tom-Alt`. Re-exporting those from Kontakt and re-running
 would fill the holes. The other never-exported category is `Focus Tuned`.
 
+## Abbey Road Accessory Racks (2026-10-01)
+
+`scripts/create_abbey_road_aux_racks.py` (`--plan` to preview) gathers the
+hand/stick/aux sounds from all 19 Abbey Road kits into six category racks, one
+pad per (kit, articulation), kits in library order from C1: Claps Solo & Snaps
+(19), Claps Multi (18), Sticks & Clicks (22 - stick clicks, spoons, kick
+shell), Snare Rims (19, "rim only"), Cowbells (22), Woodblocks & Choppers (22).
+Sidesticks, rimshots, tom rims, tambourine, bongo, timbale, triangle, octobans,
+roto tom, sand paper and spiral were deliberately left out. Brushes kits are
+independent recordings (a few shared files at most), so both versions are in.
+
+Donor is the library's own `xFull/Abbey Road/Session.adg`, whose 32 bare-Sampler
+pads differ only in samples/name/note/colour (the script checks this and refuses
+otherwise); only `SampleParts`, the pad `Name` and its colour are spliced, so the
+library curation carries over. Output: `xFull/Abbey Road Aux/` (full, 3.0 GB of
+samples) and `Sidebar/Drum/Abbey Road Aux Lite/` (`adc sampler thin` 8x3,
+1.2 GB). Note the `Instruments/Ableton/` tree named elsewhere in this file is
+now `Instruments/Sidebar/` on disk.
+
 ## Public Export of the NI Expansions Racks (2026-09-29)
 
 `scripts/export_ni_racks_public.py` (`--plan` to dry-run) packages the 1656
