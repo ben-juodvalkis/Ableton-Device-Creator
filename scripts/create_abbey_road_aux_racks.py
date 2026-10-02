@@ -129,6 +129,11 @@ COMBOS = {
     "Combo 2 (Modern Studio Vintage)": [
         "Modern Sparkle", "Modern White", "Garage", "Session", "Stadium",
         "Vintage Ebony", "Vintage Ivory",
+        # Top row, so no pad is empty: the vintage kits' leftover percussion.
+        [("Vintage Ebony", r"cowbell", r"^muted$", "bell"),
+         ("Vintage Ebony", r"cowbell", r"^open$", "bell"),
+         ("Vintage Ivory", r"wood ?block", r".", "block"),
+         ("Vintage Ivory", r"^spoons$", r"open", "click")],
     ],
 }
 
@@ -187,17 +192,22 @@ def plan_racks():
     by_name = {name: (kit_dir, arts) for name, kit_dir, arts in catalog}
     for rack, kits in COMBOS.items():
         pads = []
-        for kit_name in kits:
+        rows = []
+        for row in kits:
+            if isinstance(row, str):
+                rows.extend((row,) + rule for rule in COMBO_ROWS.get(row, COMBO_ROW))
+            else:
+                rows.extend(row)
+        for kit_name, inst_re, art_re, color in rows:
             kit_dir, arts = by_name[kit_name]
-            for inst_re, art_re, color in COMBO_ROWS.get(kit_name, COMBO_ROW):
-                hits = [(i, a) for i, a in arts if re.search(inst_re, i, re.I) and re.search(art_re, a, re.I)]
-                if len(hits) != 1:
-                    raise ValueError(f"{rack}: {kit_name} has {len(hits)} matches for {inst_re} / {art_re}")
-                inst, art = hits[0]
-                layers = find_articulation_samples(kit_dir / inst, f"{inst} {art}")
-                pads.append((f"{kit_name} - {pad_label(inst, art)}", COLORS[color], layers))
-        if len(pads) > 32:
-            raise ValueError(f"{rack}: {len(pads)} pads, the donor has 32")
+            hits = [(i, a) for i, a in arts if re.search(inst_re, i, re.I) and re.search(art_re, a, re.I)]
+            if len(hits) != 1:
+                raise ValueError(f"{rack}: {kit_name} has {len(hits)} matches for {inst_re} / {art_re}")
+            inst, art = hits[0]
+            layers = find_articulation_samples(kit_dir / inst, f"{inst} {art}")
+            pads.append((f"{kit_name} - {pad_label(inst, art)}", COLORS[color], layers))
+        if len(pads) != 32:
+            raise ValueError(f"{rack}: {len(pads)} pads - combos fill all 32, no empty pads")
         plan[rack] = pads
     return plan
 
