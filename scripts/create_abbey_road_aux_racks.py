@@ -103,6 +103,35 @@ RACKS = {
     ],
 }
 
+# Combo racks: each kit is one row of four pads - clap solo, clap multi,
+# stick click, snare rim - so on a 4x4 grid moving up a row changes kit.
+# Brushes kits are left out: same instruments as their stick-kit twins.
+COMBO_ROW = [
+    (r"clap", r"^solo$", "clap"),
+    (r"clap", r"^multi$", "clap"),
+    (r"stick", r".", "click"),
+    (r"^snare", r"^rim only$", "snare"),
+]
+COMBO_ROWS = {
+    # Ivory has no claps; its hand sounds are finger snaps and spoons.
+    "Vintage Ivory": [
+        (r"^finger$", r".", "click"),
+        (r"^spoons$", r"closed", "click"),
+        (r"stick", r".", "click"),
+        (r"^snare", r"^rim only$", "snare"),
+    ],
+}
+COMBOS = {
+    "Combo 1 (50s-80s)": [
+        "50s Autumn", "50s Spring", "60s Early 60s", "60s Late 60s",
+        "70s Open", "70s Tight", "80s Black", "80s Chrome",
+    ],
+    "Combo 2 (Modern Studio Vintage)": [
+        "Modern Sparkle", "Modern White", "Garage", "Session", "Stadium",
+        "Vintage Ebony", "Vintage Ivory",
+    ],
+}
+
 SAMPLE_RE = re.compile(r"^(.+)-([A-G]#?-?\d+)-V(\d+)-([A-Za-z0-9]+)\.wav$", re.IGNORECASE)
 
 
@@ -150,6 +179,23 @@ def plan_racks():
                     if re.search(inst_re, inst, re.I) and re.search(art_re, art, re.I):
                         layers = find_articulation_samples(kit_dir / inst, f"{inst} {art}")
                         pads.append((f"{kit_name} - {pad_label(inst, art)}", COLORS[color], layers))
+        if len(pads) > 32:
+            raise ValueError(f"{rack}: {len(pads)} pads, the donor has 32")
+        plan[rack] = pads
+
+    # Combos: one row of four pads per kit, so a 4x4 grid steps kit by kit.
+    by_name = {name: (kit_dir, arts) for name, kit_dir, arts in catalog}
+    for rack, kits in COMBOS.items():
+        pads = []
+        for kit_name in kits:
+            kit_dir, arts = by_name[kit_name]
+            for inst_re, art_re, color in COMBO_ROWS.get(kit_name, COMBO_ROW):
+                hits = [(i, a) for i, a in arts if re.search(inst_re, i, re.I) and re.search(art_re, a, re.I)]
+                if len(hits) != 1:
+                    raise ValueError(f"{rack}: {kit_name} has {len(hits)} matches for {inst_re} / {art_re}")
+                inst, art = hits[0]
+                layers = find_articulation_samples(kit_dir / inst, f"{inst} {art}")
+                pads.append((f"{kit_name} - {pad_label(inst, art)}", COLORS[color], layers))
         if len(pads) > 32:
             raise ValueError(f"{rack}: {len(pads)} pads, the donor has 32")
         plan[rack] = pads

@@ -724,6 +724,10 @@ hand/stick/aux sounds from all 19 Abbey Road kits into six category racks, one
 pad per (kit, articulation), kits in library order from C1: Claps Solo & Snaps
 (19), Claps Multi (18), Sticks & Clicks (22 - stick clicks, spoons, kick
 shell), Snare Rims (19, "rim only"), Cowbells (22), Woodblocks & Choppers (22).
+Two combo racks put one kit per row of four pads (clap solo, clap multi,
+stick, snare rim; Ivory has snaps/spoons instead of claps), so a 4x4 grid
+steps kit by kit: `Combo 1 (50s-80s)` (8 kits, 32 pads) and `Combo 2 (Modern
+Studio Vintage)` (7 kits, 28), Brushes kits left out.
 Sidesticks, rimshots, tom rims, tambourine, bongo, timbale, triangle, octobans,
 roto tom, sand paper and spiral were deliberately left out. Brushes kits are
 independent recordings (a few shared files at most), so both versions are in.
