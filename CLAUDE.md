@@ -720,26 +720,27 @@ would fill the holes. The other never-exported category is `Focus Tuned`.
 ## Abbey Road Accessory Racks (2026-10-01)
 
 `scripts/create_abbey_road_aux_racks.py` (`--plan` to preview) gathers the
-hand/stick/aux sounds from all 19 Abbey Road kits into six category racks, one
-pad per (kit, articulation), kits in library order from C1: Claps Solo & Snaps
-(19), Claps Multi (18), Sticks & Clicks (22 - stick clicks, spoons, kick
-shell), Snare Rims (19, "rim only"), Cowbells (22), Woodblocks & Choppers (22).
-Two combo racks put one kit per row of four pads (clap solo, clap multi,
-stick, snare rim; Ivory has snaps/spoons instead of claps), so a 4x4 grid
-steps kit by kit: `Combo 1 (50s-80s)` (8 kits, 32 pads) and `Combo 2 (Modern
-Studio Vintage)` (7 kits, plus a top row of Ebony cowbells, Ivory woodblock
-and open spoons so no pad is empty - the script refuses a combo under 32),
-Brushes kits left out.
-Sidesticks, rimshots, tom rims, tambourine, bongo, timbale, triangle, octobans,
-roto tom, sand paper and spiral were deliberately left out. Brushes kits are
-independent recordings (a few shared files at most), so both versions are in.
+hand/stick/aux sounds from all 19 Abbey Road kits into racks for Ben's 32-pad
+controller. **Every rack fills all 32 pads** - Ben prefers looser categories
+and re-used sounds over empty pads, and the script refuses a rack under 32.
+The 112 sounds in scope are cut in order into Claps (solo + multi side by side
+per kit), Claps, Snaps & Sticks, and Rims & Woodblocks; the fourth, Bells &
+Blocks (12 cowbells, 6 choppers, 14 woodblocks), re-uses 16 pads from the third.
+Two combos put one kit per row of four pads (clap solo, clap multi, stick,
+snare rim; Ivory has snaps/spoons instead of claps): `Combo 1 (50s-80s)` (8
+kits) and `Combo 2 (Modern Studio Vintage)` (7 kits plus a row of vintage
+cowbells, woodblock and spoons), Brushes kits left out.
+Left out on purpose: sidesticks, rimshots, splash rim, tom rims, open cowbells,
+tambourine, bongo, timbale, triangle, octobans, roto tom, sand paper, spiral,
+hi-hats. Brushes kits are independent recordings (a few shared files at most),
+so the category racks carry both versions.
 
 Donor is the library's own `xFull/Abbey Road/Session.adg`, whose 32 bare-Sampler
 pads differ only in samples/name/note/colour (the script checks this and refuses
 otherwise); only `SampleParts`, the pad `Name` and its colour are spliced, so the
-library curation carries over. Output: `xFull/Abbey Road Aux/` (full, 3.0 GB of
+library curation carries over. Output: `xFull/Abbey Road Aux/` (full, 4.8 GB of
 samples) and `Sidebar/Drum/Abbey Road Aux Lite/` (`adc sampler thin` 8x3,
-1.2 GB). Note the `Instruments/Ableton/` tree named elsewhere in this file is
+1.9 GB). Note the `Instruments/Ableton/` tree named elsewhere in this file is
 now `Instruments/Sidebar/` on disk.
 
 ## Public Export of the NI Expansions Racks (2026-09-29)

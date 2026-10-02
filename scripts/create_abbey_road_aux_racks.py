@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """
 Abbey Road accessory racks: the claps, snaps, stick clicks, rims, cowbells and
-blocks from every Abbey Road Drummer kit, gathered into category racks.
+blocks from every Abbey Road Drummer kit, gathered into full 32-pad racks
+(Ben's controller has 32 pads; no rack leaves one empty).
 
-Six racks, one pad per (kit, articulation), kits in library order:
+Four category racks, one pad per (kit, articulation), kits in library order -
+the 112 sounds in scope once each, plus 16 re-used to fill the last rack:
 
-    Claps Solo & Snaps      18 solo claps + Ivory's finger snaps
-    Claps Multi             18 multi-person claps
-    Sticks & Clicks         18 stick clicks + spoons + kick shell
-    Snare Rims              19 snare "rim only" hits
-    Cowbells                22
-    Woodblocks & Choppers   16 woodblocks + 6 choppers
+    Claps                   solo + multi side by side, 16 kits
+    Claps, Snaps & Sticks   2 kits' claps, finger snaps, 18 stick clicks,
+                            spoons, kick shells, 5 snare rims
+    Rims & Woodblocks       14 snare rims, 16 woodblocks, 2 choppers
+    Bells & Blocks          12 cowbells (no open ones), 6 choppers,
+                            14 woodblocks (re-used)
+
+and two combos, one kit per row of four pads (see COMBOS).
 
 The donor is a Live-saved library rack, `xFull/Abbey Road/Session.adg`: 32
 bare-Sampler pads at C1-G3 that are identical apart from their samples, name,
@@ -75,31 +79,31 @@ KITS = [
 
 COLORS = {"clap": 58, "click": 16, "kick": 60, "snare": 59, "bell": 26, "block": 16}
 
-# rack -> list of (instrument folder regex, articulation regex, colour key).
-# Each rule is applied across all kits before the next rule, so a rack reads
-# as one sound type at a time, kits in library order within it.
+# A rule is (instrument folder regex, articulation regex, colour key[, regex
+# the pad name must NOT match]). Each rule runs across all kits before the
+# next, so sounds of one type sit together, kits in library order.
+#
+# Every rack is a full 32 pads (Ben's controller has 32). POOL is every sound
+# in scope once, in order, cut into consecutive racks of 32; it comes to 112,
+# so the last rack is defined on its own and re-uses 16 pads from the third.
+NO_OPEN = r"^(?!.*open)"  # open cowbells are left out
+POOL = [
+    (r"clap", r"^(solo|multi)$", "clap"),  # solo and multi side by side per kit
+    (r"^finger$", r"snaps", "click"),
+    (r"stick", r".", "click"),
+    (r"^spoons$", r".", "click"),
+    (r"^kick shell$", r".", "kick"),
+    (r"^snare", r"^rim only$", "snare"),
+    (r"wood ?block", r".", "block"),
+    (r"chopper", r".", "block"),
+    (r"cowbell", NO_OPEN, "bell"),
+]
+POOL_RACKS = ["Claps", "Claps, Snaps & Sticks", "Rims & Woodblocks"]
 RACKS = {
-    "Claps Solo & Snaps": [
-        (r"clap", r"^solo$", "clap"),
-        (r"^finger$", r"snaps", "click"),
-    ],
-    "Claps Multi": [
-        (r"clap", r"^multi$", "clap"),
-    ],
-    "Sticks & Clicks": [
-        (r"stick", r".", "click"),
-        (r"^spoons$", r".", "click"),
-        (r"^kick shell$", r".", "kick"),
-    ],
-    "Snare Rims": [
-        (r"^snare", r"^rim only$", "snare"),
-    ],
-    "Cowbells": [
-        (r"cowbell", r".", "bell"),
-    ],
-    "Woodblocks & Choppers": [
-        (r"wood ?block", r".", "block"),
+    "Bells & Blocks": [
+        (r"cowbell", NO_OPEN, "bell"),
         (r"chopper", r".", "block"),
+        (r"wood ?block", r".", "block", r"^Stadium - .* Double$"),
     ],
 }
 
@@ -131,7 +135,7 @@ COMBOS = {
         "Vintage Ebony", "Vintage Ivory",
         # Top row, so no pad is empty: the vintage kits' leftover percussion.
         [("Vintage Ebony", r"cowbell", r"^muted$", "bell"),
-         ("Vintage Ebony", r"cowbell", r"^open$", "bell"),
+         ("50s Spring", r"cowbell", r".", "bell"),
          ("Vintage Ivory", r"wood ?block", r".", "block"),
          ("Vintage Ivory", r"^spoons$", r"open", "click")],
     ],
@@ -163,11 +167,11 @@ def pad_label(inst: str, art: str) -> str:
     return " ".join(w for i, w in enumerate(words) if i == 0 or w != words[i - 1])
 
 
-ORDER = {"high": 0, "hi": 0, "mid": 1, "low": 2}
+ORDER = {"high": 0, "hi": 0, "solo": 0, "mid": 1, "multi": 1, "low": 2}
 
 
 def art_key(art: str):
-    """High before Mid before Low, then alphabetical."""
+    """High before Mid before Low, Solo before Multi, then alphabetical."""
     words = art.lower().split()
     return (min((ORDER[w] for w in words if w in ORDER), default=1), art)
 
@@ -175,18 +179,32 @@ def art_key(art: str):
 def plan_racks():
     """rack -> [(pad name, colour, {velocity: [paths]})]"""
     catalog = [(name, LIBRARY_ROOT / rel, kit_articulations(LIBRARY_ROOT / rel)) for rel, name in KITS]
-    plan = {}
-    for rack, rules in RACKS.items():
+    def expand(rules):
         pads = []
-        for inst_re, art_re, color in rules:
+        for inst_re, art_re, color, *skip in rules:
             for kit_name, kit_dir, arts in catalog:
                 for inst, art in arts:
                     if re.search(inst_re, inst, re.I) and re.search(art_re, art, re.I):
+                        name = f"{kit_name} - {pad_label(inst, art)}"
+                        if skip and re.search(skip[0], name):
+                            continue
                         layers = find_articulation_samples(kit_dir / inst, f"{inst} {art}")
-                        pads.append((f"{kit_name} - {pad_label(inst, art)}", COLORS[color], layers))
-        if len(pads) > 32:
-            raise ValueError(f"{rack}: {len(pads)} pads, the donor has 32")
-        plan[rack] = pads
+                        pads.append((name, COLORS[color], layers))
+        return pads
+
+    plan = {}
+    pool = expand(POOL)
+    for i, rack in enumerate(POOL_RACKS):
+        plan[rack] = pool[32 * i:32 * (i + 1)]
+    for rack, rules in RACKS.items():
+        plan[rack] = expand(rules)
+    for rack, pads in plan.items():
+        if len(pads) != 32:
+            raise ValueError(f"{rack}: {len(pads)} pads - every rack fills all 32")
+    placed = {name for pads in plan.values() for name, _, _ in pads}
+    missing = [name for name, _, _ in pool if name not in placed]
+    if missing:
+        raise ValueError(f"sounds on no rack: {missing}")
 
     # Combos: one row of four pads per kit, so a 4x4 grid steps kit by kit.
     by_name = {name: (kit_dir, arts) for name, kit_dir, arts in catalog}
