@@ -31,8 +31,8 @@ put a Velocity device with a little Random in front to vary it.
 
 ## Near-duplicate takes
 
-Some takes in a layer are near twins (lag-tolerant correlation on the Close mic
->= 0.999). They are distinct recordings - the .nkx file counts match and an
+Some takes in a layer are near twins (lag-tolerant correlation >= 0.999 on
+every mic - Close alone misleads, see thin_and_order). They are distinct recordings - the .nkx file counts match and an
 exact replay scores 1.0000 - but they add no audible variation, so all but one
 of each twin group is left out and reported. The source files are untouched.
 
@@ -89,7 +89,10 @@ OUTPUT_DIR = Path(
 )
 
 PAD_ROOT_NOTE = 60
-NUM_VOICES = 32
+# Globals/NumVoices is the index into Live's voice-count menu, not a count:
+# factory Sampler presets store 0-11. 14 is what the donor and every curated
+# Abbey Road pad already carry, so keep it rather than guess an index.
+NUM_VOICES = 14
 TWIN_THRESHOLD = 0.999   # Close-mic correlation at or above this = same-sounding take
 ATTACK_S = 0.1           # loudness window for ordering takes inside a layer
 COMPARE_S = 1.0          # window for twin detection
@@ -149,20 +152,29 @@ def read_layers(kit_dir: Path, piece: str, articulation: str):
 def thin_and_order(codes: dict, ref_mic: str):
     """Drop near-twin takes, then order the survivors quietest first.
 
-    Returns (kept_codes, dropped [(code, twin_of, corr)]).
+    A twin must match on every mic. The Close channel alone is not enough:
+    Spring's kick takes score >= 0.999 on Close in 80 of 132 pairs and in none
+    on OH (measured 2026-10-04) - the hits differ, the Close processing hides it.
+
+    Returns (kept_codes, dropped [(code, twin_of, weakest-mic corr)]).
     """
-    audio = {c: load_mono(m[ref_mic], COMPARE_S) for c, m in codes.items()}
+    audio = {c: {mic: load_mono(p, COMPARE_S) for mic, p in m.items()}
+             for c, m in codes.items()}
     energy = {
         c: float(np.sqrt(np.mean(load_mono(m[ref_mic], ATTACK_S) ** 2)))
         for c, m in codes.items()
     }
+
+    def similarity(a, b):
+        return min(lagged_corr(audio[a][mic], audio[b][mic]) for mic in audio[a])
+
     # Loudest-first keeps the most distinct-sounding take of a twin group
     # deterministic; the order is re-done quietest-first below.
     kept, dropped = [], []
     for code in sorted(codes, key=lambda c: (-energy[c], c)):
         twin = next(
             ((k, r) for k in kept
-             if (r := lagged_corr(audio[code], audio[k])) >= TWIN_THRESHOLD),
+             if (r := similarity(code, k)) >= TWIN_THRESHOLD),
             None,
         )
         if twin:

@@ -759,9 +759,26 @@ A take's 4-char code is one Kontakt multi-out hit, shared by its three mic files
 Layer ranges come from the kit's `velocity_layers.csv`, measured by sweeping
 velocity through Kontakt - **not** the Mapping Editor's even bins, which the
 instrument script reshapes (snare layer 1 really plays 1-21). Near-twin takes
-(Close correlation >= 0.999) are left out at build time and reported; the source
-files are untouched. Output: `.../Sidebar/Drum/Abbey Road Multi-Mic/`. First
-build: `Autumn Kick Drum Dampened` - 22 layers, 88 takes, 80 kept, 240 zones.
+(correlation >= 0.999 on **every** mic) are left out at build time and reported;
+the source files are untouched. Close alone misleads: Spring's kick takes are
+twins on Close in 80 of 132 pairs and in none on OH - the Close processing hides
+real hit-to-hit variation. A layer narrower than its take count (Clap Solo's
+126-127 holds 3 takes) drops its quietest takes, also reported.
+
+`Globals/NumVoices` is an index into Live's voice menu, not a count (factory
+Sampler presets store 0-11); keep the donor's 14 rather than writing a number.
+
+`scripts/create_abbey_road_multimic_kits.py` builds the full kits: donor is the
+library's own curated `xFull/Abbey Road/50s <Kit>.adg` (32 pads), and only each
+pad's `SampleParts`, its `RoundRobin` (off) and - for substituted pads - its name
+are spliced; the verifier checks nothing else in the rack moved. "Right-Left
+Alternating" was never rendered (Kontakt alternates the Left and Right Hand
+recordings, which have different measured layer boundaries), so those pads take
+one hand: Left where the same piece's Right Hand already has a pad, else Right.
+Spring's snare is the exception, rendered as its own articulation.
+Output: `.../Sidebar/Drum/Abbey Road Multi-Mic/50s Autumn.adg` (1149 of 1160
+takes, 3291 zones) and `50s Spring.adg` (1083 of 1099, 3079 zones), plus the
+standalone `Autumn Kick Drum Dampened.adv`.
 
 ## Public Export of the NI Expansions Racks (2026-09-29)
 
