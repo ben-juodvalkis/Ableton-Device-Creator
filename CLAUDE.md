@@ -754,8 +754,9 @@ with ChokeGroup blanked. Applied 2026-10-05 to `Sidebar/Drum/Abbey Road Multi-Mi
 `... Multi-Mic Lite` (3 pads each) and `Sidebar/Drum/A Moonkits Lite` (80 racks: Hat_closed,
 Hat_Medium, Hat_Open, Hat_Wide_Open); originals in
 `/Users/Shared/Music/_backups/<set> before choke groups 2026-10-05/`. The multi-mic
-builder applies the rule itself, so rebuilds keep it. Not applied: `xFull/A Moonkits`
-(full set) and the stereo `Abbey Road Lite`.
+builder applies the rule itself, so rebuilds keep it. Also applied the same day to
+`xFull/Abbey Road` (19, the multi-mic builder's donors), `Sidebar/Drum/Abbey Road Lite` (19)
+and `xFull/A Moonkits` (80) - every Abbey Road and Moonkits drum rack now chokes its hats.
 
 ## Abbey Road Multi-Mic Lite (2026-10-05)
 
