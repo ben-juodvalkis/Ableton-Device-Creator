@@ -103,9 +103,23 @@ SELECTOR = {
     "OH": (0, 127, 32, 96),
     "Room": (32, 127, 64, 127),
 }
-MICS = ["Close", "OH", "Room"]
+# CompST (80s kits only) is the library's compressed room mic. It takes the end
+# of the knob: over 96-127 Room hands over to it as OH fades, so 127 is the
+# squashed room alone.
+SELECTOR_WITH_COMP = dict(SELECTOR, Room=(32, 127, 64, 96), CompST=(96, 127, 127, 127))
+MICS = ["Close", "OH", "Room", "CompST"]
 
-FILE_RE = re.compile(r"^(?P<art>.*) (?P<mic>Close|OH|Room)-(?P<note>\S+)-V(?P<vel>\d+)-(?P<code>[A-Z0-9]{4})\.wav$")
+FILE_RE = re.compile(r"^(?P<art>.*) (?P<mic>Close|OH|Room|CompST)-(?P<note>\S+)-V(?P<vel>\d+)-(?P<code>[A-Z0-9]{4})\.wav$")
+
+
+def selector_for(mic: str, mics) -> tuple:
+    """Selector range for `mic` given the mics the piece has. With no Close
+    (cymbals, claps, sticks) OH is full from 0 and the curve is otherwise the
+    same, so a whole-kit sweep moves every pad toward the room together."""
+    table = SELECTOR_WITH_COMP if "CompST" in mics else SELECTOR
+    if mic == "OH" and "Close" not in mics:
+        return (0, 127, 0, 96)
+    return table[mic]
 
 
 def load_mono(path: Path, seconds: float) -> np.ndarray:
@@ -196,7 +210,10 @@ def slices(lo: int, hi: int, n: int):
     return out
 
 
-def build_zones(kit_dir: Path, piece: str, articulation: str, verbose=True):
+def build_zones(kit_dir: Path, piece: str, articulation: str, verbose=True, sample_start=0):
+    """`sample_start` skips a fixed lead-in: the Early 60s, Open and Chrome
+    presets advance their close mics, so every stem of those kits starts 168
+    samples (3.8 ms) before the hit."""
     layers = read_layers(kit_dir, piece, articulation)
     takes = scan(kit_dir, piece, articulation)
     mics = [m for m in MICS if (kit_dir / piece / m).is_dir()]
@@ -240,11 +257,9 @@ def build_zones(kit_dir: Path, piece: str, articulation: str, verbose=True):
 
         for code, (vmin, vmax) in zip(kept, cuts):
             for mic in mics:
-                smin, smax, xmin, xmax = SELECTOR[mic]
-                if ref_mic != "Close" and mic == "OH":
-                    # No Close: OH is full from 0 and fades out as Room comes in.
-                    smin, smax, xmin, xmax = 0, 127, 0, 96
+                smin, smax, xmin, xmax = selector_for(mic, mics)
                 zones.append(Zone(
+                    sample_start=sample_start,
                     sample=codes[code][mic],
                     root_key=PAD_ROOT_NOTE,
                     key_min=PAD_ROOT_NOTE,

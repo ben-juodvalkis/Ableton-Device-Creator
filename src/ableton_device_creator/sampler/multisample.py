@@ -69,6 +69,7 @@ class Zone:
     volume: float = 1.0
     detune: int = 0
     name: Optional[str] = None
+    sample_start: int = 0  # first frame played, e.g. to skip a fixed lead-in
 
     def label(self) -> str:
         return self.name or Path(self.sample).stem
@@ -368,7 +369,7 @@ class MultisampleRackCreator:
 
         # Playback bounds and loop, in the order Live writes them: between
         # Link and SampleRef. Mode 1 is a sustain loop on, 0 is off.
-        _sub(part, "SampleStart", 0)
+        _sub(part, "SampleStart", min(zone.sample_start, last_frame))
         _sub(part, "SampleEnd", last_frame)
         sustain = ET.SubElement(part, "SustainLoop")
         _sub(sustain, "Start", loop[0] if loop else 0)

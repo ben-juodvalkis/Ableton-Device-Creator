@@ -768,17 +768,27 @@ real hit-to-hit variation. A layer narrower than its take count (Clap Solo's
 `Globals/NumVoices` is an index into Live's voice menu, not a count (factory
 Sampler presets store 0-11); keep the donor's 14 rather than writing a number.
 
-`scripts/create_abbey_road_multimic_kits.py` builds the full kits: donor is the
-library's own curated `xFull/Abbey Road/50s <Kit>.adg` (32 pads), and only each
-pad's `SampleParts`, its `RoundRobin` (off) and - for substituted pads - its name
-are spliced; the verifier checks nothing else in the rack moved. "Right-Left
-Alternating" was never rendered (Kontakt alternates the Left and Right Hand
-recordings, which have different measured layer boundaries), so those pads take
-one hand: Left where the same piece's Right Hand already has a pad, else Right.
-Spring's snare is the exception, rendered as its own articulation.
-Output: `.../Sidebar/Drum/Abbey Road Multi-Mic/50s Autumn.adg` (1149 of 1160
-takes, 3291 zones) and `50s Spring.adg` (1083 of 1099, 3079 zones), plus the
-standalone `Autumn Kick Drum Dampened.adv`.
+`scripts/create_abbey_road_multimic_kits.py` builds all 12 multi-out kits
+(50s/60s/70s/80s/Modern/Vintage, not the Brushes variants): donor is each kit's
+curated `xFull/Abbey Road/<rack>.adg` (32 pads), and only each pad's
+`SampleParts`, its `RoundRobin` (off) and - for substituted pads - its name are
+spliced; the verifier checks nothing else in the rack moved, and no sound sits
+on two pads. "Right-Left Alternating" was not rendered (it only duplicates the
+hand notes; Spring's snare is the exception), so those pads take whichever hand
+has no pad of its own, or an unused Rimshot/Rim Only when both do. Choke notes
+were not rendered either; those pads take an unused Tip/Edge/Bell of the cymbal.
+
+Per-kit differences, from the render (2026-10-04): the 80s kits (Black,
+Chrome) carry a fourth mic, **CompST** (the library's compressed room), which
+takes the end of the knob - over 96-127 Room and OH hand over to it, so 127 is
+the squashed room. **Early 60s, Open and Chrome** start every stem 168 samples
+(3.8 ms) before the hit, because their presets advance the close mics; zones
+there start at frame 168 (`Zone.sample_start`). Open's close mics are stereo.
+
+Output: 12 racks in `.../Sidebar/Drum/Abbey Road Multi-Mic/` named as the
+curated ones, 16207 takes -> 15802 kept (99 twins, 305 in layers narrower than
+their takes), 47212 files / 35.5 GB referenced; plus the standalone
+`Autumn Kick Drum Dampened.adv`.
 
 ### Damage rebuilt as paired one-Sampler pads (2026-10-04, staged)
 
