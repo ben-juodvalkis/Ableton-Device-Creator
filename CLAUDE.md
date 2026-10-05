@@ -743,6 +743,26 @@ samples) and `Sidebar/Drum/Abbey Road Aux Lite/` (`adc sampler thin` 8x3,
 1.9 GB). Note the `Instruments/Ableton/` tree named elsewhere in this file is
 now `Instruments/Sidebar/` on disk.
 
+## Abbey Road Multi-Mic Samplers (2026-10-04)
+
+`scripts/create_abbey_road_multimic_sampler.py` (`--plan` to dry-run; needs
+`uv run --no-project --with numpy --with soundfile`) builds one Sampler `.adv`
+per articulation from `Ben Multisamples/.../Abbey Road Multi Mic/<Kit> Kit
+Multi-Mic/`. Close, OH and Room are layered in one Sampler and blended on the
+Sample Selector (Ben's curve: OH in 0-32, Room in 32-64, Close out 64-96, OH
+out 96-127). **Round robin is off**: each take gets a thin velocity slice inside
+its layer, quietest take lowest, so velocity picks the take for all three mics at
+once. With RR on, Live pools the overlapping mic zones and alternates them; three
+Samplers in a rack with RR drift whenever a chain sits outside the selector.
+
+A take's 4-char code is one Kontakt multi-out hit, shared by its three mic files.
+Layer ranges come from the kit's `velocity_layers.csv`, measured by sweeping
+velocity through Kontakt - **not** the Mapping Editor's even bins, which the
+instrument script reshapes (snare layer 1 really plays 1-21). Near-twin takes
+(Close correlation >= 0.999) are left out at build time and reported; the source
+files are untouched. Output: `.../Sidebar/Drum/Abbey Road Multi-Mic/`. First
+build: `Autumn Kick Drum Dampened` - 22 layers, 88 takes, 80 kept, 240 zones.
+
 ## Public Export of the NI Expansions Racks (2026-09-29)
 
 `scripts/export_ni_racks_public.py` (`--plan` to dry-run) packages the 1656
