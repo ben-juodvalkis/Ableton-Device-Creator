@@ -49,6 +49,7 @@ from ableton_device_creator.core import decode_adg, encode_adg
 from ableton_device_creator.sampler.multisample import MultisampleRackCreator
 from create_abbey_road_aux_racks import pad_spans, set_direct_child, xml_attr
 from create_abbey_road_multimic_sampler import DONOR, OUTPUT_DIR, SOURCE_ROOT, build_zones
+from set_choke_groups import apply_chokes
 
 INSTRUMENTS = Path(
     "/Users/Shared/Music/Soundbanks/Ableton/Live Libraries/User Library/"
@@ -170,6 +171,10 @@ def build_kit(rack: str, verbose: bool, lite: bool = False):
     pieces.append(donor[cursor:])
     result = "".join(pieces)
     verify(donor, result, built, lead)
+    # Hi-Hat Closed/Pedal/Open choke each other (Ben's ~/Desktop/choke group.adg).
+    result, choked = apply_chokes(result, "abbey-road")
+    if len(choked) != 3:
+        raise SystemExit(f"{rack}: {len(choked)} hi-hat pads for the choke group, expected 3")
     return result, totals
 
 

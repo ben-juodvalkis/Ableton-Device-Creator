@@ -743,6 +743,20 @@ samples) and `Sidebar/Drum/Abbey Road Aux Lite/` (`adc sampler thin` 8x3,
 1.9 GB). Note the `Instruments/Ableton/` tree named elsewhere in this file is
 now `Instruments/Sidebar/` on disk.
 
+## Hi-hat choke groups (2026-10-05)
+
+`scripts/set_choke_groups.py --rule abbey-road|moonkits --dir <racks> [--expect N] [--dry-run]`
+puts a rack's hat pads in choke group 1 (all other pads 0), from Ben's reference
+`~/Desktop/choke group.adg`: Hi-Hat Closed, Pedal and Open choke each other; the
+"Extra: Hi-hat - Brush ..." pad does not. Pads are matched by name (`RULES`); only the
+pad's ZoneSettings ChokeGroup changes and the result is re-read against the original
+with ChokeGroup blanked. Applied 2026-10-05 to `Sidebar/Drum/Abbey Road Multi-Mic` and
+`... Multi-Mic Lite` (3 pads each) and `Sidebar/Drum/A Moonkits Lite` (80 racks: Hat_closed,
+Hat_Medium, Hat_Open, Hat_Wide_Open); originals in
+`/Users/Shared/Music/_backups/<set> before choke groups 2026-10-05/`. The multi-mic
+builder applies the rule itself, so rebuilds keep it. Not applied: `xFull/A Moonkits`
+(full set) and the stereo `Abbey Road Lite`.
+
 ## Abbey Road Multi-Mic Lite (2026-10-05)
 
 `create_abbey_road_multimic_kits.py --lite` writes the 12 multi-mic racks at 8 layers x 3
