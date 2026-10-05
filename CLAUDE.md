@@ -778,6 +778,27 @@ its own velocity slice, so thin would keep 8 slices - one take per dynamic, no v
 spread quiet-to-loud; all mics of a take stay on one slice. Sample RAM 30.7 -> 17.8 GB
 across the 12 (47-66% per kit: long cymbal files dominate and have few layers to cut).
 
+### Multi-mic rebuild of the accessory racks (2026-10-05)
+
+`scripts/create_abbey_road_aux_multimic_racks.py` (`--plan`, `--size
+full|lite|ultralite`) supersedes the stereo build above: the same kinds of
+sound, taken only from the 15 multi-mic kits, every pad a multi-mic pad (one
+Sampler, RR off, takes on velocity slices, mics on the Sample Selector, 168-frame
+lead where the kit has one). The Brushes kits were not rendered, so the pool is
+90 sounds, regrouped into Claps (28 claps + Ivory snaps/spoons + Autumn kick
+shell), Sticks & Rims (15 + 15 + 2 woodblocks) and Bells & Blocks (14 muted
+cowbells, 6 choppers, all 8 woodblocks, snaps/spoons/shell re-used), plus Combo
+1 and Combo 2 (Studio Drummer rows back). Every rack fills 32 pads; no sound
+sits twice on one rack. Donor is `xFull/Abbey Road Old Full/Session.adg`, its
+hi-hat choke groups cleared (these racks have no hats).
+
+Output: full `xFull/Abbey Road Aux Multi-Mic/`, Lite (8x3)
+`xFull/Abbey Road Aux Multi-Mic Lite/`, UltraLite (4x2)
+`Sidebar/Perc/Claps and Snaps/`, which replaced the six stereo racks there
+(backed up in `/Users/Shared/Music/_backups/Abbey Road aux stereo UltraLite racks
+2026-10-05/`). `Claps and Snaps.adg` in that folder is a different project of
+Ben's - never touch it.
+
 ## Abbey Road Multi-Mic Samplers (2026-10-04)
 
 `scripts/create_abbey_road_multimic_sampler.py` (`--plan` to dry-run; needs
