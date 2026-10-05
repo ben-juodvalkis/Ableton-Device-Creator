@@ -70,6 +70,7 @@ import soundfile as sf
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from ableton_device_creator.sampler.thin import _absorb, _pick
 from ableton_device_creator.sampler.multisample import (
     Chain,
     MultisampleRackCreator,
@@ -210,19 +211,34 @@ def slices(lo: int, hi: int, n: int):
     return out
 
 
-def build_zones(kit_dir: Path, piece: str, articulation: str, verbose=True, sample_start=0):
+def build_zones(kit_dir: Path, piece: str, articulation: str, verbose=True, sample_start=0,
+                max_layers=None, max_takes=None):
     """`sample_start` skips a fixed lead-in: the Early 60s, Open and Chrome
     presets advance their close mics, so every stem of those kits starts 168
-    samples (3.8 ms) before the hit."""
+    samples (3.8 ms) before the hit.
+
+    `max_layers` / `max_takes` build a Lite pad (Ben's Lite sets are 8 x 3).
+    `adc sampler thin` can't do this on a finished multi-mic rack: with round
+    robin off every take is its own velocity slice, so it would keep 8 slices,
+    one take per dynamic. Here the measured layers are thinned with thin's own
+    rule (`_pick` spreads the kept layers, `_absorb` widens each over its dropped
+    neighbours, so every boundary is a measured one), then each kept layer keeps
+    `max_takes` takes spread over its quiet-to-loud order. All mics of a take
+    stay on the same slice."""
     layers = read_layers(kit_dir, piece, articulation)
+    ranges = [(int(r["vel_lo"]), int(r["vel_hi"])) for r in layers]
+    if max_layers and len(layers) > max_layers:
+        keep = _pick(len(layers), max_layers)
+        ranges = _absorb(ranges, keep)
+        layers = [layers[i] for i in keep]
     takes = scan(kit_dir, piece, articulation)
     mics = [m for m in MICS if (kit_dir / piece / m).is_dir()]
     ref_mic = "Close" if "Close" in mics else "OH"
 
     zones, report = [], {"layers": len(layers), "takes": 0, "kept": 0, "dropped": [], "merged": []}
     expect_lo = 1
-    for row in layers:
-        lo, hi, vel = int(row["vel_lo"]), int(row["vel_hi"]), int(row["rendered_velocity"])
+    for row, (lo, hi) in zip(layers, ranges):
+        vel = int(row["rendered_velocity"])
         if lo != expect_lo:
             raise SystemExit(f"layer {row['layer']}: starts at {lo}, expected {expect_lo}")
         expect_lo = hi + 1
@@ -237,6 +253,8 @@ def build_zones(kit_dir: Path, piece: str, articulation: str, verbose=True, samp
                 raise SystemExit(f"take {code} (V{vel}) has no {sorted(missing)} file")
 
         kept, dropped = thin_and_order(codes, ref_mic)
+        if max_takes and len(kept) > max_takes:
+            kept = [kept[i] for i in _pick(len(kept), max_takes)]
         report["takes"] += len(codes)
         report["dropped"] += [(row["layer"], *d) for d in dropped]
 

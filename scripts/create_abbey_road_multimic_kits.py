@@ -127,7 +127,11 @@ def plan_kit(kit: str, donor: str):
     return kit_dir, plan
 
 
-def build_kit(rack: str, verbose: bool):
+LITE_DIR = INSTRUMENTS / "Sidebar/Drum/Abbey Road Multi-Mic Lite"
+LITE = (8, 3)  # layers x takes, same as Ben's other Abbey Road Lite racks
+
+
+def build_kit(rack: str, verbose: bool, lite: bool = False):
     kit = KITS[rack]
     donor = decode_adg(INSTRUMENTS / f"xFull/Abbey Road/{rack}.adg")
     kit_dir, plan = plan_kit(kit, donor)
@@ -139,7 +143,8 @@ def build_kit(rack: str, verbose: bool):
     totals = defaultdict(int)
     for (start, end), (piece, art, name, note) in zip(spans, plan):
         print(f"\n[{len(built) + 36}] {name}" + (f"   ({note})" if note else ""))
-        zones, report, mics = build_zones(kit_dir, piece, art, verbose=verbose, sample_start=lead)
+        zones, report, mics = build_zones(kit_dir, piece, art, verbose=verbose, sample_start=lead,
+                                          **(dict(max_layers=LITE[0], max_takes=LITE[1]) if lite else {}))
         print(f"     {report['layers']} layers, {report['takes']} takes -> {report['kept']} "
               f"(-{len(report['dropped'])} twins), {len(zones)} zones, mics {'/'.join(mics)}")
         for layer, extra in report["merged"]:
@@ -206,6 +211,8 @@ def main():
     ap.add_argument("--kit", choices=KITS, action="append")
     ap.add_argument("--plan", action="store_true", help="show the pad plan, write nothing")
     ap.add_argument("--verbose", action="store_true", help="print every layer's slices")
+    ap.add_argument("--lite", action="store_true",
+                    help=f"build {LITE[0]} layers x {LITE[1]} takes per pad into {LITE_DIR}")
     args = ap.parse_args()
 
     for rack in args.kit or KITS:
@@ -215,8 +222,8 @@ def main():
             for i, (piece, art, name, note) in enumerate(plan_kit(KITS[rack], donor)[1]):
                 print(f"  {36 + i}  {name}" + (f"   ({note})" if note else ""))
             continue
-        result, totals = build_kit(rack, args.verbose)
-        out = OUTPUT_DIR / f"{rack}.adg"
+        result, totals = build_kit(rack, args.verbose, lite=args.lite)
+        out = (LITE_DIR if args.lite else OUTPUT_DIR) / f"{rack}.adg"
         out.parent.mkdir(parents=True, exist_ok=True)
         encode_adg(result, out)
         print(f"\nwrote {out}: {totals['takes']} takes, {totals['kept']} kept, "

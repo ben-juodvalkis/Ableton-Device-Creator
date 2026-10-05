@@ -743,6 +743,17 @@ samples) and `Sidebar/Drum/Abbey Road Aux Lite/` (`adc sampler thin` 8x3,
 1.9 GB). Note the `Instruments/Ableton/` tree named elsewhere in this file is
 now `Instruments/Sidebar/` on disk.
 
+## Abbey Road Multi-Mic Lite (2026-10-05)
+
+`create_abbey_road_multimic_kits.py --lite` writes the 12 multi-mic racks at 8 layers x 3
+takes per pad to `Sidebar/Drum/Abbey Road Multi-Mic Lite/` (same names, drop-in swap).
+**Don't use `adc sampler thin` on the multi-mic racks**: with round robin off every take is
+its own velocity slice, so thin would keep 8 slices - one take per dynamic, no variation.
+`build_zones(max_layers, max_takes)` instead thins the *measured* layers with thin's own
+`_pick`/`_absorb` (every boundary stays a measured one), then keeps 3 takes per kept layer
+spread quiet-to-loud; all mics of a take stay on one slice. Sample RAM 30.7 -> 17.8 GB
+across the 12 (47-66% per kit: long cymbal files dominate and have few layers to cut).
+
 ## Abbey Road Multi-Mic Samplers (2026-10-04)
 
 `scripts/create_abbey_road_multimic_sampler.py` (`--plan` to dry-run; needs
