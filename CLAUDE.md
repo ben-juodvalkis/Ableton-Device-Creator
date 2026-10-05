@@ -780,6 +780,30 @@ Output: `.../Sidebar/Drum/Abbey Road Multi-Mic/50s Autumn.adg` (1149 of 1160
 takes, 3291 zones) and `50s Spring.adg` (1083 of 1099, 3079 zones), plus the
 standalone `Autumn Kick Drum Dampened.adv`.
 
+### Damage rebuilt as paired one-Sampler pads (2026-10-04, staged)
+
+`scripts/create_damage_paired_racks.py` (`--plan`, `--only NAME`) rebuilds all
+136 Damage racks (`Sidebar/Perc/Damage Lite` + `xFull/Damage`) the multi-mic
+way, using the Abbey Road Multi-Mic `50s Autumn.adg` as donor (32 bare Sampler
+pads, notes 36-67 - the Damage racks already sat there). Each pad: one Sampler,
+RR off, Close and Full crossfaded on the Sample Selector (Close full at 0 and
+gone at 127, Full the mirror), each take on a thin velocity slice.
+
+**Close and Full takes are the same recordings after all** - the "independent
+passes" note above was inferred from the differing random codes. Measured over
+all 732 instruments (16015 pairs): each Close take has one Full take matching at
+median 0.996, clearly ahead of the rest; 559 instruments pair perfectly. Pairs
+are assigned per layer by maximum total correlation; ambiguous ones (runner-up
+within 0.05, ~9% in the racks) are kept, since those takes sound alike. Full is
+Close plus ambience (~0.99 correlation), so the knob crossfades, never layers.
+
+Velocity layout comes from each source pad's own Close chain (its bins and kept
+takes), so Lite stays 8x3 and xFull stays full. Pad names, colours and notes
+come from the source rack. Result: 88312 paired takes; 202 Close takes with no
+Full partner and 155 twins left out. The per-pad macros (Attack, Release, Room...)
+are gone - Room is the Sampler's own Sample Selector. Staged at
+`/Users/Shared/Music/_staging/Damage paired 2026-10-04/` (mirrors `Instruments/`).
+
 ## Public Export of the NI Expansions Racks (2026-09-29)
 
 `scripts/export_ni_racks_public.py` (`--plan` to dry-run) packages the 1656
