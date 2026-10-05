@@ -86,7 +86,7 @@ SOURCE_ROOT = Path(
 )
 OUTPUT_DIR = Path(
     "/Users/Shared/Music/Soundbanks/Ableton/Live Libraries/User Library/"
-    "Looping Presets/Instruments/Sidebar/Drum/Abbey Road Multi-Mic"
+    "Looping Presets/Instruments/xFull/Abbey Road Multi-Mic"
 )
 
 PAD_ROOT_NOTE = 60

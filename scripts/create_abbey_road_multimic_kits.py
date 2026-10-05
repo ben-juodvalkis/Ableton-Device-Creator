@@ -3,7 +3,7 @@
 Multi-mic versions of the 12 curated Abbey Road 32-pad racks (the kits rendered
 multi-out: 50s, 60s, 70s, 80s, Modern and Vintage, not the Brushes variants).
 
-Donor is the library's own rack, `xFull/Abbey Road/<rack>.adg`: same pads,
+Donor is the library's own rack, `xFull/Abbey Road Old Full/<rack>.adg`: same pads,
 notes, names, colours, macros and curation. Only each pad's `SampleParts` is
 swapped for the multi-mic zone map built by create_abbey_road_multimic_sampler
 (Close/OH/Room on the Sample Selector, takes on thin velocity slices, layer
@@ -55,9 +55,14 @@ INSTRUMENTS = Path(
     "/Users/Shared/Music/Soundbanks/Ableton/Live Libraries/User Library/"
     "Looping Presets/Instruments"
 )
-# curated rack name (xFull/Abbey Road/<name>.adg, also the output name) -> render kit
+# Ben's layout (2026-10-05): full + Lite sets live in xFull (out of the browser),
+# UltraLite is the browsable set in Sidebar/Drum; the curated stereo racks the
+# multi-mic ones are built from moved to xFull/Abbey Road Old Full.
+CURATED = INSTRUMENTS / "xFull/Abbey Road Old Full"
+# curated rack name (xFull/Abbey Road Old Full/<name>.adg, also the output name) -> render kit
 KITS = {
     "50s Autumn": "Autumn", "50s Spring": "Spring",
+    "Garage": "Garage", "Session": "Session", "Stadium": "Stadium",
     "60s Early 60s": "Early 60s", "60s Late 60s": "Late 60s",
     "70s Open": "Open", "70s Tight": "Tight",
     "80s Black": "Black", "80s Chrome": "Chrome",
@@ -85,28 +90,55 @@ def pad_articulation(pad: ET.Element):
     return piece, stem[len(piece) + 1:]
 
 
+NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+LABEL_RE = re.compile(r"-([A-G]#?)(-?\d+)-V\d+-\w+\.wav$")
+# Abbey Road "Center Right-Left Alternating"; Studio Drummer "Center L-R Alternating",
+# Garage's Tom 3 also "Center L-R Alternating Double" (hands: "Center Right Hand Double").
+ALT_RE = re.compile(r"^(.*?) ?(?:Right-Left|L-R) Alternating( Double)?$")
+
+
+def pad_midi(pad: ET.Element) -> int:
+    """MIDI note of a curated pad's samples, from the Logic-style label in the
+    filename (C3 = 60, one octave below this repo's C4 = 60 elsewhere)."""
+    path = pad.find(".//SampleParts/MultiSamplePart/SampleRef/FileRef/Path").get("Value")
+    name, octave = LABEL_RE.search(os.path.basename(path)).groups()
+    return (int(octave) + 2) * 12 + NOTE_NAMES.index(name)
+
+
 def plan_kit(kit: str, donor: str):
     kit_dir = SOURCE_ROOT / f"{kit} Kit Multi-Mic"
-    rendered = {(r["drum_piece"], r["articulation"])
-                for r in csv.DictReader(open(kit_dir / "velocity_layers.csv"))}
+    rows = list(csv.DictReader(open(kit_dir / "velocity_layers.csv")))
+    rendered = {(r["drum_piece"], r["articulation"]) for r in rows}
+    by_note = {int(r["midi_note"]): (r["drum_piece"], r["articulation"]) for r in rows}
     pads = ET.fromstring(donor).findall(".//BranchPresets/DrumBranchPreset")
     wanted = [pad_articulation(p) for p in pads]
 
+    # (piece, articulation, why) actually used per pad; None = still to resolve
     uses = []
-    for piece, art in wanted:
-        use, note = art, None
-        if (piece, art) not in rendered and art.endswith(ALT):
-            stem = art[: -len(ALT)]
-            hands = [stem + "Right Hand", stem + "Left Hand"]
-            free = [h for h in hands if (piece, h) not in wanted]
+    for pad, (piece, art) in zip(pads, wanted):
+        if (piece, art) in rendered:
+            uses.append((piece, art, None))
+            continue
+        alt = ALT_RE.match(art)
+        if alt:
+            base, suffix = alt.group(1), alt.group(2) or ""
+            hands = [f"{base} Right Hand{suffix}", f"{base} Left Hand{suffix}"]
+            free = [h for h in hands if (piece, h) not in wanted and (piece, h) in rendered]
             # Both hands already on their own pads: fall through to a spare.
-            use = free[0] if free else None
-            note = f"alternating not rendered -> {use}"
-        uses.append((use, note))
+            uses.append((piece, free[0], f"alternating not rendered -> {free[0]}") if free else (piece, None, None))
+            continue
+        # The curated rack was built from an older mapping (Studio Drummer Garage/
+        # Stadium rows were Session's): take whatever the instrument plays on the
+        # pad's own note, per the measured layer table.
+        hit = by_note.get(pad_midi(pad))
+        if hit and art != "Choke":
+            uses.append((hit[0], hit[1], f"note {pad_midi(pad)} plays {hit[0]} - {hit[1]} (old name {piece} - {art})"))
+        else:
+            uses.append((piece, None, None))
 
-    taken = {(p, u) for (p, _), (u, _) in zip(wanted, uses) if u}
-    for i, ((piece, art), (use, note)) in enumerate(zip(wanted, uses)):
-        if use is not None and ((piece, use) in rendered or art != "Choke"):
+    taken = {(p, u) for p, u, _ in uses if u}
+    for i, ((piece, art), (upiece, use, note)) in enumerate(zip(wanted, uses)):
+        if use is not None:
             continue
         prefs = CHOKE_PREFERENCE if art == "Choke" else SPARE_PREFERENCE
         spare = sorted((a for p, a in rendered if p == piece and (p, a) not in taken),
@@ -115,23 +147,24 @@ def plan_kit(kit: str, donor: str):
             raise SystemExit(f"{kit}: {piece} / {art} has no unused articulation to stand in")
         taken.add((piece, spare[0]))
         why = "choke not rendered" if art == "Choke" else "alternating not rendered, both hands on pads"
-        uses[i] = (spare[0], f"{why} -> {spare[0]}")
+        uses[i] = (piece, spare[0], f"{why} -> {spare[0]}")
 
     plan = []
-    for pad, (piece, art), (use, note) in zip(pads, wanted, uses):
-        if (piece, use) not in rendered:
-            raise SystemExit(f"{kit}: {piece} / {use} has no multi-mic render")
+    for pad, (piece, art), (upiece, use, note) in zip(pads, wanted, uses):
+        if (upiece, use) not in rendered:
+            raise SystemExit(f"{kit}: {upiece} / {use} has no multi-mic render")
         name = pad.find("Name").get("Value")
-        if use != art:
-            name = name.replace(art.replace("Right-Left", "Right/Left"), use).replace(art, use)
-        plan.append((piece, use, name, note))
+        if (upiece, use) != (piece, art):
+            role = name.split(":", 1)[0] + ": " if ":" in name else ""
+            name = f"{role}{upiece} - {use.replace('Right-Left', 'Right/Left').replace('L-R', 'L/R')}"
+        plan.append((upiece, use, name, note))
     return kit_dir, plan
 
 
 # size -> (layers, takes, output folder). Lite matches Ben's other Abbey Road Lite
 # racks; UltraLite (4 x 2) is the smallest set, all mics kept.
 SIZES = {
-    "lite": (8, 3, INSTRUMENTS / "Sidebar/Drum/Abbey Road Multi-Mic Lite"),
+    "lite": (8, 3, INSTRUMENTS / "xFull/Abbey Road Multi-Mic Lite"),
     "ultralite": (4, 2, INSTRUMENTS / "Sidebar/Drum/Abbey Road Multi-Mic UltraLite"),
 }
 LITE_DIR, LITE = SIZES["lite"][2], SIZES["lite"][:2]
@@ -141,7 +174,7 @@ def build_kit(rack: str, verbose: bool, lite: bool = False, size: str = None):
     if lite and not size:
         size = "lite"
     kit = KITS[rack]
-    donor = decode_adg(INSTRUMENTS / f"xFull/Abbey Road/{rack}.adg")
+    donor = decode_adg(CURATED / f"{rack}.adg")
     kit_dir, plan = plan_kit(kit, donor)
     lead = LEAD.get(kit, 0)
     spans = pad_spans(donor)
@@ -233,7 +266,7 @@ def main():
     for rack in args.kit or KITS:
         print(f"\n===== {rack} =====")
         if args.plan:
-            donor = decode_adg(INSTRUMENTS / f"xFull/Abbey Road/{rack}.adg")
+            donor = decode_adg(CURATED / f"{rack}.adg")
             for i, (piece, art, name, note) in enumerate(plan_kit(KITS[rack], donor)[1]):
                 print(f"  {36 + i}  {name}" + (f"   ({note})" if note else ""))
             continue
