@@ -94,6 +94,9 @@ NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 LABEL_RE = re.compile(r"-([A-G]#?)(-?\d+)-V\d+-\w+\.wav$")
 # Abbey Road "Center Right-Left Alternating"; Studio Drummer "Center L-R Alternating",
 # Garage's Tom 3 also "Center L-R Alternating Double" (hands: "Center Right Hand Double").
+# The autosampler's verified note -> articulation table, for curated pads whose
+# drum doesn't exist in the corrected kit (Garage has no Tom 4).
+MAPPING_CSV = Path("/Users/Shared/DevWork/GitHub/autosampler/Docs/AbbeyRoadStudioDrummer_Mapping.csv")
 ALT_RE = re.compile(r"^(.*?) ?(?:Right-Left|L-R) Alternating( Double)?$")
 
 
@@ -114,11 +117,24 @@ def plan_kit(kit: str, donor: str):
     wanted = [pad_articulation(p) for p in pads]
 
     # (piece, articulation, why) actually used per pad; None = still to resolve
+    pieces = {p for p, _ in rendered}
+    kit_rows = {}
+    for r in csv.DictReader(open(MAPPING_CSV)):
+        if r["kit_name"] == f"{kit} Kit":
+            kit_rows.setdefault(int(r["midi_note"]), (r["drum_piece"], r["articulation"].replace("/", "-")))
+
     uses = []
     for pad, (piece, art) in zip(pads, wanted):
         if (piece, art) in rendered:
             uses.append((piece, art, None))
             continue
+        if piece not in pieces and pad_midi(pad) in kit_rows:
+            # e.g. Garage "Tom 4 - Center L-R Alternating" on note 41 is really
+            # "Tom 3 - Center L-R Alternating Double"; resolve that name below.
+            piece, art = kit_rows[pad_midi(pad)]
+            if (piece, art) in rendered:
+                uses.append((piece, art, f"renamed by note {pad_midi(pad)} -> {piece} - {art}"))
+                continue
         alt = ALT_RE.match(art)
         if alt:
             base, suffix = alt.group(1), alt.group(2) or ""
