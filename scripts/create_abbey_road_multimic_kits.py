@@ -128,11 +128,18 @@ def plan_kit(kit: str, donor: str):
     return kit_dir, plan
 
 
-LITE_DIR = INSTRUMENTS / "Sidebar/Drum/Abbey Road Multi-Mic Lite"
-LITE = (8, 3)  # layers x takes, same as Ben's other Abbey Road Lite racks
+# size -> (layers, takes, output folder). Lite matches Ben's other Abbey Road Lite
+# racks; UltraLite (4 x 2) is the smallest set, all mics kept.
+SIZES = {
+    "lite": (8, 3, INSTRUMENTS / "Sidebar/Drum/Abbey Road Multi-Mic Lite"),
+    "ultralite": (4, 2, INSTRUMENTS / "Sidebar/Drum/Abbey Road Multi-Mic UltraLite"),
+}
+LITE_DIR, LITE = SIZES["lite"][2], SIZES["lite"][:2]
 
 
-def build_kit(rack: str, verbose: bool, lite: bool = False):
+def build_kit(rack: str, verbose: bool, lite: bool = False, size: str = None):
+    if lite and not size:
+        size = "lite"
     kit = KITS[rack]
     donor = decode_adg(INSTRUMENTS / f"xFull/Abbey Road/{rack}.adg")
     kit_dir, plan = plan_kit(kit, donor)
@@ -145,7 +152,8 @@ def build_kit(rack: str, verbose: bool, lite: bool = False):
     for (start, end), (piece, art, name, note) in zip(spans, plan):
         print(f"\n[{len(built) + 36}] {name}" + (f"   ({note})" if note else ""))
         zones, report, mics = build_zones(kit_dir, piece, art, verbose=verbose, sample_start=lead,
-                                          **(dict(max_layers=LITE[0], max_takes=LITE[1]) if lite else {}))
+                                          **(dict(max_layers=SIZES[size][0], max_takes=SIZES[size][1])
+                                             if size else {}))
         print(f"     {report['layers']} layers, {report['takes']} takes -> {report['kept']} "
               f"(-{len(report['dropped'])} twins), {len(zones)} zones, mics {'/'.join(mics)}")
         for layer, extra in report["merged"]:
@@ -218,6 +226,8 @@ def main():
     ap.add_argument("--verbose", action="store_true", help="print every layer's slices")
     ap.add_argument("--lite", action="store_true",
                     help=f"build {LITE[0]} layers x {LITE[1]} takes per pad into {LITE_DIR}")
+    ap.add_argument("--ultralite", action="store_true",
+                    help="build {} layers x {} takes per pad into {}".format(*SIZES["ultralite"]))
     args = ap.parse_args()
 
     for rack in args.kit or KITS:
@@ -227,8 +237,9 @@ def main():
             for i, (piece, art, name, note) in enumerate(plan_kit(KITS[rack], donor)[1]):
                 print(f"  {36 + i}  {name}" + (f"   ({note})" if note else ""))
             continue
-        result, totals = build_kit(rack, args.verbose, lite=args.lite)
-        out = (LITE_DIR if args.lite else OUTPUT_DIR) / f"{rack}.adg"
+        size = "ultralite" if args.ultralite else ("lite" if args.lite else None)
+        result, totals = build_kit(rack, args.verbose, size=size)
+        out = (SIZES[size][2] if size else OUTPUT_DIR) / f"{rack}.adg"
         out.parent.mkdir(parents=True, exist_ok=True)
         encode_adg(result, out)
         print(f"\nwrote {out}: {totals['takes']} takes, {totals['kept']} kept, "

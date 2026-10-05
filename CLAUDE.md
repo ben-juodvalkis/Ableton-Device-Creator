@@ -743,6 +743,15 @@ samples) and `Sidebar/Drum/Abbey Road Aux Lite/` (`adc sampler thin` 8x3,
 1.9 GB). Note the `Instruments/Ableton/` tree named elsewhere in this file is
 now `Instruments/Sidebar/` on disk.
 
+## Abbey Road UltraLite (2026-10-05)
+
+Smallest Abbey Road sets, **4 layers x 2 takes** per pad, Abbey Road only (not Moonkits etc.):
+- `Sidebar/Drum/Abbey Road UltraLite/` (19 stereo kits) - `thin_tree(xFull/Abbey Road, max_layers=4,
+  max_takes=2)`; 0 failures, sample RAM 24.2 -> 3.7 GB (Lite is 10.8). Hat chokes carry over (thin only
+  touches SampleParts).
+- `Sidebar/Drum/Abbey Road Multi-Mic UltraLite/` (12 kits) - `create_abbey_road_multimic_kits.py
+  --ultralite` (`SIZES` in that script), all mics kept; 30.7 -> 6.7 GB (Lite 17.8), 256 takes per kit.
+
 ## Hi-hat choke groups (2026-10-05)
 
 `scripts/set_choke_groups.py --rule abbey-road|moonkits --dir <racks> [--expect N] [--dry-run]`
