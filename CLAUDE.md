@@ -801,8 +801,10 @@ Velocity layout comes from each source pad's own Close chain (its bins and kept
 takes), so Lite stays 8x3 and xFull stays full. Pad names, colours and notes
 come from the source rack. Result: 88312 paired takes; 202 Close takes with no
 Full partner and 155 twins left out. The per-pad macros (Attack, Release, Room...)
-are gone - Room is the Sampler's own Sample Selector. Staged at
-`/Users/Shared/Music/_staging/Damage paired 2026-10-04/` (mirrors `Instruments/`).
+are gone - Room is the Sampler's own Sample Selector. Ben checked them in Live
+and they **replaced the library racks the same day**; the previous two-chain
+racks are backed up in `/Users/Shared/Music/_backups/Damage racks before paired
+rebuild 2026-10-04/` (mirrors `Instruments/`).
 
 ## Public Export of the NI Expansions Racks (2026-09-29)
 
